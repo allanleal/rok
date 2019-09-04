@@ -20,22 +20,22 @@ class _TransportSolver(object):
         self.initialized = False
 
 
-    def set_velocity(self, velocity):
+    def setVelocity(self, velocity):
         self.velocity = velocity
         self.initialized = False
 
 
-    def set_diffusion(self, diffusion):
+    def setDiffusion(self, diffusion):
         self.diffusion = diffusion
         self.initialized = False
 
 
-    def set_source(self, source):
+    def setSource(self, source):
         self.source = source
         self.initialized = False
 
 
-    def set_boundary_conditions(self, bcs):
+    def setBoundaryConditions(self, bcs):
         self.bcs = bcs if hasattr(bcs, '__len__') else [bcs]
 
 
@@ -95,20 +95,20 @@ class TransportSolver(object):
         self.pimpl = _TransportSolver()
 
 
-    def set_velocity(self, velocity):
-        self.pimpl.set_velocity(velocity)
+    def setVelocity(self, velocity):
+        self.pimpl.setVelocity(velocity)
 
 
-    def set_diffusion(self, diffusion):
-        self.pimpl.set_diffusion(diffusion)
+    def setDiffusion(self, diffusion):
+        self.pimpl.setDiffusion(diffusion)
 
 
-    def set_source(self, source):
-        self.pimpl.set_source(source)
+    def setSource(self, source):
+        self.pimpl.setSource(source)
 
 
-    def set_boundary_conditions(self, bc):
-        self.pimpl.set_boundary_conditions(bc)
+    def setBoundaryConditions(self, bc):
+        self.pimpl.setBoundaryConditions(bc)
 
 
     def step(self, u, dt):
@@ -147,10 +147,10 @@ bc = DirichletBC(V, Constant(1.0), 1)
 u = Function(V)
 
 transport = TransportSolver()
-transport.set_velocity(velocity)
-transport.set_diffusion(diffusion)
-transport.set_source(source)
-transport.set_boundary_conditions([bc])
+transport.setVelocity(velocity)
+transport.setDiffusion(diffusion)
+transport.setSource(source)
+transport.setBoundaryConditions([bc])
 
 t = 0.0
 
