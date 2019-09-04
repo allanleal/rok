@@ -113,7 +113,7 @@ out_elements = ['H', 'O', 'C', 'Ca', 'Mg', 'Na', 'Cl']
 filename = 'nosupg-result-100C-300bar-dt-%d-cells-%d.xdmf' % (dt, ncells)
 
 # Create the output file
-file = File('result.pvd')
+file = File('results/result.pvd')
 
 t = 0.0
 step = 0
