@@ -1,8 +1,10 @@
 # Visual Studio Code
 .vscode
 
+# Python
+__pycache__/
+
 # Output files
 *.vtu
 *.pvd
 *.avi
-
