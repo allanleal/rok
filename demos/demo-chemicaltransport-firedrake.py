@@ -1,15 +1,6 @@
-'''
-Created on Jul 22, 2015
-
-@author: allan
-'''
-
-import os, sys; sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from firedrake import *
+import firedrake as fire
 import reaktoro as rkt
-from rok.chemicalfield import ChemicalField
-from rok.chemicaltransport import ChemicalTransportSolver
+import rok
 
 # Auxiliary time related constants
 second = 1
@@ -25,26 +16,20 @@ ny = 1            # the number of mesh cells along the y-coordinate
 Lx = 1.0          # the length of the mesh along the x-coordinate
 Ly = 0.01         # the length of the mesh along the y-coordinate
 
-nsteps = 100       # the number of time steps
+nsteps = 2       # the number of time steps
 
-D  = 1.0e-9                          # the diffusion coefficient (in units of m2/s)
-v  = Constant((1.0/week, 0.0, 0.0))  # the fluid pore velocity (in units of m/s)
-dt = 300*minute                      # the time step (in units of s)
-T  = 60.0 + 273.15                   # the temperature (in units of K)
-P  = 100 * 1e5                       # the pressure (in units of Pa)
-
-# # The velocity (in units of m/s)
-# v = Constant((1.15740741e-5, 0.0)) # equivalent to 1 m/day
-
-# # The diffusion coefficient (in units of m2/s)
-# D = Constant(1.0e-9)
+D  = fire.Constant(1.0e-9)                # the diffusion coefficient (in units of m2/s)
+v  = fire.Constant([1.0/week])            # the fluid pore velocity (in units of m/s)
+dt = 300*minute                           # the time step (in units of s)
+T  = 60.0 + 273.15                        # the temperature (in units of K)
+P  = 100 * 1e5                            # the pressure (in units of Pa)
 
 # Initialise the mesh
-# mesh = RectangleMesh(nx, ny, Lx, Ly)
-# mesh = UnitIntervalMesh(nx)
-mesh = UnitCubeMesh(nx, nx, nx)
+mesh = fire.UnitIntervalMesh(nx)
+# mesh = fire.RectangleMesh(nx, ny, Lx, Ly)
+# mesh = fire.UnitCubeMesh(nx, nx, nx)
 
-V = FunctionSpace(mesh, 'CG', 1)
+V = fire.FunctionSpace(mesh, 'CG', 1)
 
 # Initialise the database
 database = rkt.Database('supcrt98.xml')
@@ -91,24 +76,24 @@ state_ic.scalePhaseVolume('Calcite', 0.018, 'm3')
 state_bc.scaleVolume(1.0)
 
 # Initialise the chemical field
-field = ChemicalField(system, V)
+field = rok.ChemicalField(system, V)
 field.fill(state_ic)
 
 # Initialize the chemical transport solver
-transport = ChemicalTransportSolver(field)
+transport = rok.ChemicalTransportSolver(field)
 transport.addBoundaryCondition(state_bc, 1)  # 1 means left side in a rectangular mesh
 transport.setVelocity([v])
-transport.setDiffusion([Constant(D)])
+transport.setDiffusion([D])
 
 out_species = ['Ca++', 'Mg++', 'Calcite', 'Dolomite', 'CO2(aq)', 'HCO3-', 'Cl-', 'H2O(l)']
 out_elements = ['H', 'O', 'C', 'Ca', 'Mg', 'Na', 'Cl']
 
-nout = [Function(V, name=name) for name in out_species]
-bout = [Function(V, name=name) for name in out_elements]
+nout = [fire.Function(V, name=name) for name in out_species]
+bout = [fire.Function(V, name=name) for name in out_elements]
 
 # Create the output file
-file_species_amounts = File('results/species-amounts.pvd')
-file_element_amounts = File('results/element-amounts.pvd')
+file_species_amounts = fire.File('results/species-amounts.pvd')
+file_element_amounts = fire.File('results/element-amounts.pvd')
 
 t = 0.0
 step = 0
@@ -127,33 +112,10 @@ while step <= nsteps:
     file_species_amounts.write(*nout)
     file_element_amounts.write(*bout)
 
-#     # For each selected element, output its molar amounts
-#     for element in out_elements:
-#         file << (field.elementAmount(element, 'Aqueous'), t)
-
-    # result = transport.result
-
-    # file << (result.equilibrium.iterations, t)
-    # file << (result.equilibrium.seconds, t)
-    # file << (field.porosity(), t)
-    # file << (field.volume(), t)
-
-#     file << (field.volume(), t)
-#     file << (field.ph(), t)
-
     # Perform one transport step from `t` to `t + dt`
     transport.step(field, dt)
-
-    # # For each selected element, output its molar amounts
-    # for element in out_elements:
-    #     file << (transport.elementAmountInPhase(element, 'Aqueous'), t)
 
     # Update the current time
     step += 1
     t += dt
 
-
-# print 'Statistics:'
-# print 'Total simulation time = ', time.time() - begin
-# print 'Total time spent on transport calculations = ', result.time
-# print 'Total time spent on equilibrium calculations = ', result.time_equilibrium, '({:.2%})'.format(result.time_equilibrium/result.time)
