@@ -1,7 +1,8 @@
-from firedrake import *
-from reaktoro import *
+from .transport import TransportSolver
 
-# Python modules
+from firedrake import *
+import reaktoro as rkt
+
 from numpy import empty
 import math
 import numpy
@@ -19,22 +20,22 @@ class ChemicalDirichletBC:
         self.state = state.clone()
         self.values = Function(function_space)
         self.dirichlet = DirichletBC(function_space, 1, boundary)
-        self.dirichlet.apply(self.values.vector())
-        self.dofs = numpy.where(self.values.vector() == 1)[0]
+        self.dirichlet.apply(self.values)
+        self.dofs = numpy.where(self.values.dat.data == 1)[0]
         self.dirichlet = DirichletBC(function_space, self.values, boundary)
 
 
     def elementDirichletBC(self, ielement, ispecies, porosity):
         bval = self.state.elementAmountInSpecies(ielement, ispecies)
-        phi = porosity.vector()[self.dofs]
-        self.values.vector()[self.dofs] = phi*bval
+        phi = porosity.dat.data[self.dofs]
+        self.values.dat.data[self.dofs] = phi*bval
         return self.dirichlet
 
 
     def speciesDirichletBC(self, ispecies, porosity):
         nval = self.state.speciesAmount(ispecies)
-        phi = porosity.vector()[self.dofs]
-        self.values.vector()[self.dofs] = phi*nval
+        phi = porosity.dat.data[self.dofs]
+        self.values.dat.data[self.dofs] = phi*nval
         return self.dirichlet
 
 
@@ -196,7 +197,7 @@ class ChemicalTransportSolver(object):
         self.output = Function(self.function_space)
 
         # Initialize the chemical equilibrium solver
-        self.equilibrium = EquilibriumSolver(self.system)
+        self.equilibrium = rkt.EquilibriumSolver(self.system)
         self.equilibrium.setPartition(self.partition)
 
         # Initialize the indices of the equilibrium and kinetic species
@@ -208,11 +209,13 @@ class ChemicalTransportSolver(object):
         self.ispecies_s  = self.partition.indicesSolidSpecies()
 
         # Initialize the indices of the equilibrium-fluid and equilibrium-solid species
-        self.ispecies_ef = [sorted(set(self.ispecies_e) & set(indices)) for indices in self.ispecies_f]
+        # self.ispecies_ef = [sorted(set(self.ispecies_e) & set(indices)) for indices in self.ispecies_f]
+        self.ispecies_ef = [sorted(set(self.ispecies_e) & set(self.ispecies_f))]
         self.ispecies_es = sorted(set(self.ispecies_e) & set(self.ispecies_s))
 
         # Initialize the indices of the kinetic-fluid and kinetic-solid species
-        self.ispecies_kf = [sorted(set(self.ispecies_k) & set(indices)) for indices in self.ispecies_f]
+        # self.ispecies_kf = [sorted(set(self.ispecies_k) & set(indices)) for indices in self.ispecies_f]
+        self.ispecies_kf = [sorted(set(self.ispecies_k) & set(self.ispecies_f))]
         self.ispecies_ks = sorted(set(self.ispecies_k) & set(self.ispecies_s))
 
         # Initialize the indices of fluid and solid phases
@@ -225,8 +228,8 @@ class ChemicalTransportSolver(object):
 
         # Initialize the arrays of element amounts for each fluid phase in
         # the equilibrium-fluid partition for each degree-of-freedom in the function space
-        self.bef = [numpy.zeros((self.num_elements, self.num_dofs)) \
-                        for i in range(self.num_fluid_phases)]
+        self.bef = [numpy.zeros((self.num_elements, self.num_dofs))
+            for i in range(self.num_fluid_phases)]
 
         # Initialize the array of element amounts in the equilibrium
         # partition for each degree-of-freedom in the function space
@@ -316,7 +319,7 @@ class ChemicalTransportSolver(object):
         for bef in bef_positive:
             self.be += bef
 
-        options = EquilibriumOptions()
+        options = rkt.EquilibriumOptions()
 #         options.epsilon = 1e-30
 #         options.hessian = EquilibriumHessian.Exact
 #         options.optimum.tolerance = 1e-8

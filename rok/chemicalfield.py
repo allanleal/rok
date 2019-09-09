@@ -18,14 +18,14 @@ class _ChemicalField(object):
         self.mesh = function_space.mesh()
 
         # Initialize the number of degree-of-freedoms
-        self.num_dofs = len(self.function_space.dof_count)
+        self.num_dofs = self.function_space.dof_count
 
         # Initialize the chemical state of every degree-of-freedom
         self.states = [ChemicalState(system) for i in range(self.num_dofs)]
 
         # Initialize the indices of fluid and solid phases
-        self.iphases_fluid = partition.indicesFluidPhases()
-        self.iphases_solid = partition.indicesSolidPhases()
+        self.iphases_fluid = self.partition.indicesFluidPhases()
+        self.iphases_solid = self.partition.indicesSolidPhases()
 
         # Initialize the Function instances for the saturation field of each fluid phase
         self.sat = [Function(function_space) for i in self.iphases_fluid]
@@ -137,8 +137,8 @@ class _ChemicalField(object):
 
 class ChemicalField(object):
 
-    def __init__(self, system, partition, function_space):
-        self.pimpl = _ChemicalField(system, partition, function_space)
+    def __init__(self, system, function_space):
+        self.pimpl = _ChemicalField(system, function_space)
 
 
     def fill(self, state):

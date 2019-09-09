@@ -115,62 +115,62 @@ class TransportSolver(object):
         self.pimpl.step(u, dt)
 
 
-# Discretization parameters
-ncells_x  = 40
-ncells_y  = 40
+# # Discretization parameters
+# ncells_x  = 40
+# ncells_y  = 40
 
-# Problem parameters
-velocity  = 1.0e-2
-diffusion = 1.0e-3
-diffusion = 0.0
-source    = 0.0
+# # Problem parameters
+# velocity  = 1.0e-2
+# diffusion = 1.0e-3
+# diffusion = 0.0
+# source    = 0.0
 
-# Time integration parameters
-cfl       = 0.1
-T         = 100
-# dt        = cfl * (1.0/ncells_x) / velocity  # v*dt/dx = CFL
-dt        = 1.0
-
-
-velocity  = Constant((velocity, 0.0))
-diffusion = Constant(diffusion)
-source    = Constant(source)
+# # Time integration parameters
+# cfl       = 0.1
+# T         = 100
+# # dt        = cfl * (1.0/ncells_x) / velocity  # v*dt/dx = CFL
+# dt        = 1.0
 
 
-# mesh = UnitSquareMesh(ncells_x, ncells_y)
-mesh = UnitSquareMesh(ncells_x, ncells_y, quadrilateral=True)
+# velocity  = Constant((velocity, 0.0))
+# diffusion = Constant(diffusion)
+# source    = Constant(source)
 
-V = FunctionSpace(mesh, "CG", 1)
 
-bc = DirichletBC(V, Constant(1.0), 1)
+# # mesh = UnitSquareMesh(ncells_x, ncells_y)
+# mesh = UnitSquareMesh(ncells_x, ncells_y, quadrilateral=True)
 
-u = Function(V)
+# V = FunctionSpace(mesh, "CG", 1)
 
-transport = TransportSolver()
-transport.setVelocity(velocity)
-transport.setDiffusion(diffusion)
-transport.setSource(source)
-transport.setBoundaryConditions([bc])
+# bc = DirichletBC(V, Constant(1.0), 1)
 
-t = 0.0
+# u = Function(V)
 
-step = 0
+# transport = TransportSolver()
+# transport.setVelocity(velocity)
+# transport.setDiffusion(diffusion)
+# transport.setSource(source)
+# transport.setBoundaryConditions([bc])
 
-outfile = File("u.pvd")
-outfile.write(u)
+# t = 0.0
 
-while t < T:
+# step = 0
 
-  transport.step(u, dt)
+# outfile = File("u.pvd")
+# outfile.write(u)
 
-  umin = min(u.dat.data)
-  umax = max(u.dat.data)
+# while t < T:
 
-  t += dt
-  step += 1
+#   transport.step(u, dt)
 
-  if step % 5 == 0:
-    outfile.write(u)
-    print("t = {:<15.3f} step = {:<15} umin = {:<15.3f} umax = {:<15.3f}".format(t, step, umin, umax))
+#   umin = min(u.dat.data)
+#   umax = max(u.dat.data)
+
+#   t += dt
+#   step += 1
+
+#   if step % 5 == 0:
+#     outfile.write(u)
+#     print("t = {:<15.3f} step = {:<15} umin = {:<15.3f} umax = {:<15.3f}".format(t, step, umin, umax))
 
 
