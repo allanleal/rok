@@ -39,7 +39,7 @@ class _TransportSolver(object):
         self.bcs = bcs if hasattr(bcs, '__len__') else [bcs]
 
 
-    def initialize(self, u):
+    def initialize(self, function_space):
         self.initialized = True
 
         velocity = self.velocity
@@ -47,10 +47,11 @@ class _TransportSolver(object):
         source = self.source
         dt = self.dt
 
-        V = u.function_space()
+        V = function_space
+
         mesh = V.mesh()
 
-        u0 = u
+        u0 = self.u0 = Function(V)
 
         u = TrialFunction(V)
         v = TestFunction(V)
@@ -80,14 +81,19 @@ class _TransportSolver(object):
         self.A = assemble(self.a, bcs=self.bcs)
         self.b = assemble(self.L, bcs=self.bcs)
 
+        self.u = Function(V)
+
+        self.problem = LinearVariationalProblem(self.a, self.L, self.u, bcs=self.bcs, constant_jacobian=False)
+        self.solver = LinearVariationalSolver(self.problem, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+
 
     def step(self, u, dt):
         if not self.initialized:
-            self.initialize(u)
+            self.initialize(u.function_space())
         self.dt.assign(dt)
-        assemble(self.a, tensor=self.A, bcs=self.bcs)
-        assemble(self.L, tensor=self.b, bcs=self.bcs)
-        solve(self.A, u, self.b)
+        self.u0.assign(u)
+        self.solver.solve()
+        u.assign(self.u)
 
 
 class TransportSolver(object):
@@ -113,64 +119,4 @@ class TransportSolver(object):
 
     def step(self, u, dt):
         self.pimpl.step(u, dt)
-
-
-# # Discretization parameters
-# ncells_x  = 40
-# ncells_y  = 40
-
-# # Problem parameters
-# velocity  = 1.0e-2
-# diffusion = 1.0e-3
-# diffusion = 0.0
-# source    = 0.0
-
-# # Time integration parameters
-# cfl       = 0.1
-# T         = 100
-# # dt        = cfl * (1.0/ncells_x) / velocity  # v*dt/dx = CFL
-# dt        = 1.0
-
-
-# velocity  = Constant((velocity, 0.0))
-# diffusion = Constant(diffusion)
-# source    = Constant(source)
-
-
-# # mesh = UnitSquareMesh(ncells_x, ncells_y)
-# mesh = UnitSquareMesh(ncells_x, ncells_y, quadrilateral=True)
-
-# V = FunctionSpace(mesh, "CG", 1)
-
-# bc = DirichletBC(V, Constant(1.0), 1)
-
-# u = Function(V)
-
-# transport = TransportSolver()
-# transport.setVelocity(velocity)
-# transport.setDiffusion(diffusion)
-# transport.setSource(source)
-# transport.setBoundaryConditions([bc])
-
-# t = 0.0
-
-# step = 0
-
-# outfile = File("u.pvd")
-# outfile.write(u)
-
-# while t < T:
-
-#   transport.step(u, dt)
-
-#   umin = min(u.dat.data)
-#   umax = max(u.dat.data)
-
-#   t += dt
-#   step += 1
-
-#   if step % 5 == 0:
-#     outfile.write(u)
-#     print("t = {:<15.3f} step = {:<15} umin = {:<15.3f} umax = {:<15.3f}".format(t, step, umin, umax))
-
 
