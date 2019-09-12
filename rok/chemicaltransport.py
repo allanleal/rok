@@ -1,28 +1,18 @@
 from .transport import TransportSolver
 
-from firedrake import *
+import firedrake as fire
 import reaktoro as rkt
-
-from numpy import empty
-import math
+import numpy as np
 import numpy
 import time as timer
-
-# # Reaktoro modules
-# from core import *
-# from core.mobility import Mobility
-# from transport import TransportSolver
-# from core.porosity import Porosity
 
 
 class ChemicalDirichletBC:
     def __init__(self, function_space, state, boundary):
         self.state = state.clone()
-        self.values = Function(function_space)
-        self.dirichlet = DirichletBC(function_space, 1, boundary)
-        self.dirichlet.apply(self.values)
-        self.dofs = numpy.where(self.values.dat.data == 1)[0]
-        self.dirichlet = DirichletBC(function_space, self.values, boundary)
+        self.values = fire.Function(function_space)
+        self.dofs = function_space.boundary_nodes(boundary, "topological")
+        self.dirichlet = fire.DirichletBC(function_space, self.values, boundary)
 
 
     def elementDirichletBC(self, ielement, ispecies, porosity):
@@ -92,9 +82,9 @@ class ChemicalTransportSolver(object):
         self.num_elements = self.system.numElements()
         self.num_fluid_phases = len(self.partition.indicesFluidPhases())
         self.num_solid_phases = len(self.partition.indicesSolidPhases())
-        self.velocity = [Constant(0.0) for i in range(self.num_fluid_phases)]
-        self.diffusion = [Constant(0.0) for i in range(self.num_fluid_phases)]
-        self.source = [Constant(0.0) for i in range(self.num_fluid_phases)]
+        self.velocity = [fire.Constant(0.0) for i in range(self.num_fluid_phases)]
+        self.diffusion = [fire.Constant(0.0) for i in range(self.num_fluid_phases)]
+        self.source = [fire.Constant(0.0) for i in range(self.num_fluid_phases)]
         self.boundary_conditions = []
         self.initialized = False
 
@@ -106,15 +96,15 @@ class ChemicalTransportSolver(object):
 
         # Initialize the ChemicalTransportResult instance
         self.result = ChemicalTransportResult()
-        self.result.equilibrium.iterations = Function(self.function_space)
-        self.result.equilibrium.seconds = Function(self.function_space)
-        self.result.kinetics.timesteps = Function(self.function_space)
-        self.result.kinetics.seconds = Function(self.function_space)
+        self.result.equilibrium.iterations = fire.Function(self.function_space)
+        self.result.equilibrium.seconds = fire.Function(self.function_space)
+        self.result.kinetics.timesteps = fire.Function(self.function_space)
+        self.result.kinetics.seconds = fire.Function(self.function_space)
 
-        self.result.equilibrium._iterations = numpy.empty(self.num_dofs)
-        self.result.equilibrium._seconds = numpy.empty(self.num_dofs)
-        self.result.kinetics._timesteps = numpy.empty(self.num_dofs)
-        self.result.kinetics._seconds = numpy.empty(self.num_dofs)
+        self.result.equilibrium._iterations = np.empty(self.num_dofs)
+        self.result.equilibrium._seconds = np.empty(self.num_dofs)
+        self.result.kinetics._timesteps = np.empty(self.num_dofs)
+        self.result.kinetics._seconds = np.empty(self.num_dofs)
 
         self.result.equilibrium.iterations.rename('EquilibriumIterationsPerDOF', 'EquilibriumIterationsPerDOF')
         self.result.equilibrium.seconds.rename('EquilibriumSecondsPerDOF', 'EquilibriumSecondsPerDOF')
@@ -191,10 +181,10 @@ class ChemicalTransportSolver(object):
                     for (state, boundary) in self.boundary_conditions]
 
         # The auxiliary Function instance used for transport steps
-        self.u = Function(self.function_space)
+        self.u = fire.Function(self.function_space)
 
         # The auxiliary Function instance used for outputting
-        self.output = Function(self.function_space)
+        self.output = fire.Function(self.function_space)
 
         # Initialize the chemical equilibrium solver
         self.equilibrium = rkt.EquilibriumSolver(self.system)
@@ -228,12 +218,12 @@ class ChemicalTransportSolver(object):
 
         # Initialize the arrays of element amounts for each fluid phase in
         # the equilibrium-fluid partition for each degree-of-freedom in the function space
-        self.bef = [numpy.zeros((self.num_elements, self.num_dofs))
+        self.bef = [np.zeros((self.num_elements, self.num_dofs))
             for i in range(self.num_fluid_phases)]
 
         # Initialize the array of element amounts in the equilibrium
         # partition for each degree-of-freedom in the function space
-        self.be = numpy.zeros((self.num_elements, self.num_dofs))
+        self.be = np.zeros((self.num_elements, self.num_dofs))
 
         # Get the dolfin Function's for the saturation fields of fluid phases
         self.saturations = field.saturations()
@@ -300,8 +290,8 @@ class ChemicalTransportSolver(object):
     def equilibrate(self, field):
 
         # Compute the positive and negative part of the molar amounts of the elements in the equilibrium-fluid partition
-        bef_positive = [numpy.maximum(x, 0) for x in self.bef]
-        bef_negative = [numpy.minimum(x, 0) for x in self.bef]
+        bef_positive = [np.maximum(x, 0) for x in self.bef]
+        bef_negative = [np.minimum(x, 0) for x in self.bef]
 
         # Start timing the equilibrate step
         tbegin = timer.time()
@@ -319,13 +309,13 @@ class ChemicalTransportSolver(object):
         for bef in bef_positive:
             self.be += bef
 
-        options = rkt.EquilibriumOptions()
+        # options = rkt.EquilibriumOptions()
 #         options.epsilon = 1e-30
 #         options.hessian = EquilibriumHessian.Exact
 #         options.optimum.tolerance = 1e-8
 #         options.optimum.output.active = True
 
-        self.equilibrium.setOptions(options)
+        # self.equilibrium.setOptions(options)
 
         # Compute the equilibrium states
         for k in range(self.num_dofs):
@@ -395,7 +385,7 @@ class ChemicalTransportSolver(object):
     def elementAmountInPhase(self, element, phase):
         ielement = self.system.indexElement(element)
         iphase = self.system.indexPhase(phase)
-        out = Function(self.function_space)
+        out = fire.Function(self.function_space)
         out.vector()[:] = self.bef[iphase][ielement]
         out.rename(element, element)
         return out
