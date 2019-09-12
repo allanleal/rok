@@ -56,23 +56,23 @@ class _TransportSolver(object):
         u = TrialFunction(V)
         v = TestFunction(V)
 
-        # Mid-point solution
-        u_mid = 0.5*(u0 + u)
-
         # Residual
-        r = u - u0 + dt*(div(velocity * u_mid) - \
-            div(diffusion*grad(u_mid)) - source)
+        r = u - u0 + dt*(div(velocity * u) - \
+            div(diffusion*grad(u)) - source)
 
         # Galerkin variational problem
-        F = v*(u - u0)*dx + dt*(v*div(velocity * u_mid)*dx + \
-            dot(grad(v), diffusion*grad(u_mid))*dx - source*v*dx)
+        F = v*(u - u0)*dx + dt*(v*div(velocity * u)*dx + \
+            dot(grad(v), diffusion*grad(u))*dx - source*v*dx)
 
         # Add SUPG stabilisation terms
-        h = CellDiameter(mesh)
+        h_k = sqrt(2) * CellVolume(mesh) / CellDiameter(mesh)
         vnorm = sqrt(dot(velocity, velocity))
-        tau = h/(2.0*vnorm)
-
-        F += tau*dot(velocity, grad(v))*r*dx
+        m_k = 1.0 / 3.0
+        Pe_k = m_k * vnorm * h_k / (2.0 * diffusion)
+        one = Constant(1.0)
+        eps_k = conditional(gt(Pe_k, one), one, Pe_k)
+        tau_k = h_k / (2.0 * vnorm) * eps_k
+        F += tau_k*dot(velocity, grad(v))*r*dx
 
         # Create bilinear and linear forms
         self.a = lhs(F)
@@ -83,8 +83,8 @@ class _TransportSolver(object):
 
         self.u = Function(V)
 
-        self.problem = LinearVariationalProblem(self.a, self.L, self.u, bcs=self.bcs, constant_jacobian=False)
-        self.solver = LinearVariationalSolver(self.problem, solver_parameters={"ksp_type": "preonly", "pc_type": "lu"})
+        self.problem = LinearVariationalProblem(self.a, self.L, self.u, bcs=self.bcs)
+        self.solver = LinearVariationalSolver(self.problem)
 
 
     def step(self, u, dt):
@@ -92,6 +92,7 @@ class _TransportSolver(object):
             self.initialize(u.function_space())
         self.dt.assign(dt)
         self.u0.assign(u)
+        self.u.assign(u)
         self.solver.solve()
         u.assign(self.u)
 
