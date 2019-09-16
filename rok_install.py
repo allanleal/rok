@@ -5,7 +5,6 @@ import os
 parser = argparse.ArgumentParser(description='Script for required components for rok.')
 parser.add_argument('--download-firedrake-install-script', nargs='?', const=True, type=bool)
 parsed, unknown_parsed_args = parser.parse_known_args()
-# print(parsed.download_firedrake_install_script)
 
 
 def get_args_to_firedrake_install(parser, unknown_args):
@@ -36,8 +35,3 @@ if parsed.download_firedrake_install_script:
 
 args_to_firedrake_install = get_args_to_firedrake_install(parser, unknown_parsed_args)
 install_firedrake(args_to_firedrake_install)
-
-# args_to_firedrake_install = get_args_to_firedrake_install()
-# root_directory_path = os.getcwd()
-
-
