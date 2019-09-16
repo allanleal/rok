@@ -6,4 +6,4 @@ dependencies:
 
 environment:
   PYTHONPATH:
-    - {{ root }}/firedrake/lib64/python3.7/site-packages:{{ root }}/firedrake/src
+    - {{ root }}:{{ root }}/firedrake/lib64/python3.7/site-packages:{{ root }}/firedrake/src
