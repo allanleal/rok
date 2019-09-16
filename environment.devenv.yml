@@ -1,0 +1,9 @@
+name: rok
+channels:
+  - conda-forge
+dependencies:
+  - reaktoro
+
+environment:
+  PYTHONPATH:
+    - {{ root }}

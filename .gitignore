@@ -8,3 +8,8 @@ __pycache__/
 *.vtu
 *.pvd
 *.avi
+
+# Firedrake's utils
+firedrake-install
+firedrake
+firedrake-install.log
