@@ -1,0 +1,12 @@
+name: rok
+channels:
+  - conda-forge
+dependencies:
+  - reaktoro
+
+environment:
+  PYTHONPATH:
+    - {{ root }}:$CONDA_PREFIX/lib/python3.7/site-packages
+
+  PATH:
+    - {{ PATH }}:{{ root }}/firedrake/bin
