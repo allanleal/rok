@@ -6,7 +6,7 @@ dependencies:
 
 environment:
   PYTHONPATH:
-    - {{ root }}:{{ root }}/firedrake/lib64/python3.7/site-packages:{{ root }}/firedrake/src
+    - {{ root }}:$CONDA_PREFIX/lib/python3.7/site-packages
 
   PATH:
     - {{ PATH }}:{{ root }}/firedrake/bin
