@@ -134,9 +134,9 @@ class DarcySolver:
         self.bcs = []
         for uboundary, iboundary, component in bcs_u:
             if component != None:
-                self.bcs.append(fire.DirichletBC(W.sub(0).sub(component), uboundary, iboundary))
+                self.bcs.append(fire.DirichletBC(W.sub(0).sub(component), rho*uboundary, iboundary))
             else:
-                self.bcs.append(fire.DirichletBC(W.sub(0), uboundary, iboundary))
+                self.bcs.append(fire.DirichletBC(W.sub(0), rho*uboundary, iboundary))
 
         # solver_parameters = {
         #     # This setup is suitable for 3D
