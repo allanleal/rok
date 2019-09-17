@@ -87,16 +87,12 @@ class ChemicalTransportSolver(object):
         self.source = [fire.Constant(0.0) for i in range(self.num_fluid_phases)]
         self.boundary_conditions = []
         self.initialized = False
-        self.iH2O = self.system.indexSpecies('H2O(l)')
 
         # Initialize the function space used in the ChemicalField instance
         self.function_space = field.functionSpace()
 
         # Initialize the number of degrees-of-freedom in the current process
         self.num_dofs = self.function_space.dof_count
-
-        # Create a scalar field with the amounts of H2O(l)
-        self.nH2O = fire.Function(self.function_space)
 
         # Initialize the ChemicalTransportResult instance
         self.result = ChemicalTransportResult()
@@ -204,7 +200,7 @@ class ChemicalTransportSolver(object):
 
         # Initialize the indices of the equilibrium-fluid and equilibrium-solid species
         # self.ispecies_ef = [sorted(set(self.ispecies_e) & set(indices)) for indices in self.ispecies_f]
-        self.ispecies_ef = [sorted((set(self.ispecies_e) - set([self.iH2O])) & set(self.ispecies_f))]
+        self.ispecies_ef = [sorted(set(self.ispecies_e) & set(self.ispecies_f))]
         self.ispecies_es = sorted(set(self.ispecies_e) & set(self.ispecies_s))
 
         # Initialize the indices of the kinetic-fluid and kinetic-solid species
@@ -228,9 +224,6 @@ class ChemicalTransportSolver(object):
         # Initialize the array of element amounts in the equilibrium
         # partition for each degree-of-freedom in the function space
         self.be = np.zeros((self.num_elements, self.num_dofs))
-
-        # Initialize the amounts of H2O(l) in each DOF
-        self.nH2O.assign(field.speciesAmount('H2O(l)'))
 
         # Get the dolfin Function's for the saturation fields of fluid phases
         self.saturations = field.saturations()
@@ -315,13 +308,6 @@ class ChemicalTransportSolver(object):
         # Compute the contribution from the equilibrium-fluid partition
         for bef in bef_positive:
             self.be += bef
-
-        # Compute the contribution from H2O(l)
-        iH = self.system.indexElement('H')
-        iO = self.system.indexElement('O')
-
-        self.be[iH, :] += self.nH2O.dat.data*2
-        self.be[iO, :] += self.nH2O.dat.data
 
         # options = rkt.EquilibriumOptions()
 #         options.epsilon = 1e-30

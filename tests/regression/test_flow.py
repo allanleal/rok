@@ -1,5 +1,7 @@
 import numpy as np
 import rok
+
+
 rho = rok.Constant(1000.0)  # water density (in units of kg/m3)
 mu = rok.Constant(8.9e-4)  # water viscosity (in units of Pa*s)
 k = rok.Constant(1e-12)  # rock permeability (in units of m2)

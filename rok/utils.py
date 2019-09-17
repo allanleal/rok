@@ -1,3 +1,6 @@
+import firedrake as fire
+
+
 def boundaryNameToIndex(name):
     if type(name) is int:
         return name
@@ -9,3 +12,13 @@ def vectorComponentNameToIndex(name):
         return name
     return ['x', 'y', 'z'].index(name)
 
+
+class DirichletExpressionBC(fire.DirichletBC):
+    def __init__(self, function_space, expr, boundary):
+        self.uboundary = fire.Function(function_space)
+        self.interpolator = fire.Interpolator(expr, self.uboundary)
+        super().__init__(function_space, self.uboundary, boundary)
+
+
+    def update(self):
+        self.interpolator.interpolate()

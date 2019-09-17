@@ -15,7 +15,7 @@ nx = 25           # the number of mesh cells along the x-coordinate
 ny = 25           # the number of mesh cells along the y-coordinate
 nz = 25           # the number of mesh cells along the y-coordinate
 
-nsteps = 1000       # the number of time steps
+nsteps = 100       # the number of time steps
 
 D  = fire.Constant(1.0e-9)                # the diffusion coefficient (in units of m2/s)
 v  = fire.Constant([1.0/week, 0.0])  # the fluid pore velocity (in units of m/s)
@@ -92,9 +92,9 @@ bout = [fire.Function(V, name=name) for name in out_elements]
 
 
 # Create the output file
-file_species_amounts = fire.File('results/demo-chemicaltransport2/species-amounts.pvd')
-file_element_amounts = fire.File('results/demo-chemicaltransport2/element-amounts.pvd')
-file_porosity = fire.File('results/demo-chemicaltransport2/porosity.pvd')
+file_species_amounts = fire.File('results/demo-chemicaltransport/species-amounts.pvd')
+file_element_amounts = fire.File('results/demo-chemicaltransport/element-amounts.pvd')
+file_porosity = fire.File('results/demo-chemicaltransport/porosity.pvd')
 
 t = 0.0
 step = 0

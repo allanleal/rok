@@ -1,31 +1,6 @@
 import firedrake as fire
 from firedrake import dot, div, grad, inner, curl, dx, ds
-from .utils import boundaryNameToIndex, vectorComponentNameToIndex
-
-
-# import numpy as np
-# A = np.array([[1,2], [3, 4], [5,6]])
-# b = np.array([1,2,3])
-
-# A * b[:, None]
-
-class DarcyVelocityBC:
-    def __init__(self, function_space, u, boundary):
-        self.u = u
-        self.q = fire.Function(function_space)
-        self.dofs = function_space.boundary_nodes(boundary, "topological")
-        self.dirichlet = fire.DirichletBC(function_space, self.q, boundary)
-
-
-    def update(self, density):
-        rho = density.dat.data[self.dofs]
-
-        for i in range(self.q.dat.data.shape[1]):
-            self.q.dat.data[:, i] /= self.problem.rho.dat.data
-            self.q.dat.data[:, i] /= self.problem.rho.dat.data
-        self.q.dat.data[self.dofs] = rho*bval
-
-        return self.dirichlet
+from .utils import boundaryNameToIndex, vectorComponentNameToIndex, DirichletExpressionBC
 
 
 class DarcyProblem:
@@ -159,11 +134,11 @@ class DarcySolver:
         self.bcs = []
         for uboundary, iboundary, component in bcs_u:
             if component != None:
-                # self.bcs.append(fire.DirichletBC(W.sub(0).sub(component), uboundary, iboundary))
+                # self.bcs.append(DirichletExpressionBC(W.sub(0).sub(component), rho*uboundary, iboundary))
                 self.bcs.append(fire.DirichletBC(W.sub(0).sub(component), rho*uboundary, iboundary))
             else:
-                self.bcs.append(fire.DirichletBC(W.sub(0), uboundary, iboundary))
-                # self.bcs.append(fire.DirichletBC(W.sub(0), rho*uboundary, iboundary))
+                # self.bcs.append(DirichletExpressionBC(W.sub(0), rho*uboundary, iboundary))
+                self.bcs.append(fire.DirichletBC(W.sub(0), rho*uboundary, iboundary))
 
         # solver_parameters = {
         #     # This setup is suitable for 3D
@@ -187,6 +162,8 @@ class DarcySolver:
 
 
     def solve(self):
+        # for bc in self.bcs:
+        #     bc.update()
         self.solver.solve()
         self.p.assign(self.solution.sub(1))
         self.u.assign(self.solution.sub(0))
