@@ -1,0 +1,61 @@
+from firedrake import *
+import matplotlib.pyplot as plt
+from gstools import SRF, Gaussian, TPLStable
+from scipy.interpolate import interp2d
+import numpy as np
+
+
+def rescale_field(x_input, x_new_min, x_new_max):
+    x_min_input = x_input.min()
+    x_max_input = x_input.max()
+    return (x_input - x_min_input) / (x_max_input - x_min_input) * (x_new_max - x_new_min) + x_new_min
+
+
+# Generating the data
+######################################
+
+size = 200
+x = y = range(size)
+
+model = TPLStable(dim=2, var=1, len_scale=20, len_low=0)
+srf = SRF(model, seed=20170519)
+
+test = srf([x, y], mesh_type='structured')
+
+plt.imshow(test)
+plt.show()
+x = np.arange(0.0, 1.0, 1 / size)
+y = np.arange(0.0, 1.0, 1 / size)
+xx, yy = np.meshgrid(x, y)
+z = test
+
+f_data = interp2d(x, y, z, kind='linear')
+
+# Putting it on Firedrake
+######################################
+
+Lx, Ly = 1, 1
+nx, ny = 100, 100
+mesh = RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
+
+V = FunctionSpace(mesh, 'DG', degree=0)
+
+# First, grab the mesh.
+m = V.ufl_domain()
+
+# Now make the VectorFunctionSpace corresponding to V.
+W = VectorFunctionSpace(m, V.ufl_element())
+
+# Next, interpolate the coordinates onto the nodes of W.
+X = interpolate(m.coordinates, W)
+
+# Make an output function.
+f = Function(V)
+
+# Use the external data function to interpolate the values of f.
+X_data = X.dat.data_ro
+X_mesh, Y_mesh = X_data[:, 0], X_data[:, 1]
+kdata = np.array([f_data(xy[0], xy[1]) for xy in X.dat.data_ro])
+f.dat.data[:] = rescale_field(kdata, 1e-14, 1e-12)[:, 0]
+plot(f)
+plt.show()
