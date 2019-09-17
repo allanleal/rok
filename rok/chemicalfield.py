@@ -27,6 +27,12 @@ class _ChemicalField(object):
         self.iphases_fluid = self.partition.indicesFluidPhases()
         self.iphases_solid = self.partition.indicesSolidPhases()
 
+        # Initialize the Function instances for the density field of each fluid phase
+        self.densities = [Function(function_space) for i in self.iphases_fluid]
+
+        # Initialize the auxiliary array used for setting self.densities
+        self.densities_values = np.zeros((len(self.iphases_fluid), self.num_dofs))
+
         # Initialize the Function instances for the saturation field of each fluid phase
         self.sat = [Function(function_space) for i in self.iphases_fluid]
 
@@ -39,11 +45,8 @@ class _ChemicalField(object):
         # Initialize the auxiliary array used for setting self.phi
         self.sat_values = np.zeros((len(self.iphases_fluid), self.num_dofs))
 
-        # Initialize the Function instance for the phi field
-        self.phi = Function(function_space)
-
-        # Set the name of the phi Function instance
-        self.phi.rename('Porosity', 'Porosity')
+        # Initialize the Function instance for the porosity field
+        self.phi = Function(function_space, name='Porosity')
 
         # Initialize the auxiliary array used for setting self.phi
         self.phi_values = np.zeros(self.num_dofs)
@@ -74,13 +77,16 @@ class _ChemicalField(object):
         for k in range(self.num_dofs):
             properties = self.states[k].properties()
             v = properties.phaseVolumes().val
+            m = properties.phaseMasses().val
             volume_fluid = sum([v[i] for i in self.iphases_fluid])
             volume_solid = sum([v[i] for i in self.iphases_solid])
             self.phi_values[k] = 1.0 - volume_solid
             self.sat_values[:, k] = [v[i]/volume_fluid for i in self.iphases_fluid]
+            self.densities_values[:, k] = [m[i]/self.phi_values[k] for i in self.iphases_fluid]
         self.phi.vector()[:] = self.phi_values
         for i in range(len(self.iphases_fluid)):
             self.sat[i].vector()[:] = self.sat_values[i]
+            self.densities[i].vector()[:] = self.densities_values[i]
 
 
     def elementAmounts(self, b):
@@ -187,6 +193,10 @@ class ChemicalField(object):
 
     def volume(self):
         return self.pimpl.volume()
+
+
+    def densities(self):
+        return self.pimpl.densities
 
 
     def saturations(self):
