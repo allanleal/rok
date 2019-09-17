@@ -92,9 +92,9 @@ bout = [fire.Function(V, name=name) for name in out_elements]
 
 
 # Create the output file
-file_species_amounts = fire.File('results/species-amounts.pvd')
-file_element_amounts = fire.File('results/element-amounts.pvd')
-file_porosity = fire.File('results/porosity.pvd')
+file_species_amounts = fire.File('results/demo-chemicaltransport2/species-amounts.pvd')
+file_element_amounts = fire.File('results/demo-chemicaltransport2/element-amounts.pvd')
+file_porosity = fire.File('results/demo-chemicaltransport2/porosity.pvd')
 
 t = 0.0
 step = 0
