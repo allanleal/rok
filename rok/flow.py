@@ -1,5 +1,5 @@
 import firedrake as fire
-from firedrake import dot, div, grad, inner, curl, dx, ds
+from firedrake import dot, div, grad, inner, curl, dx, ds, dS, jump, avg
 from .utils import boundaryNameToIndex, vectorComponentNameToIndex
 
 
@@ -41,17 +41,31 @@ class DarcyProblem:
 
 class DarcySolver:
 
-    def __init__(self, problem, u_degree=1, p_degree=1):
+    def __init__(self, problem, u_degree=1, p_degree=1, method='cgls'):
         self.problem = problem
         mesh = problem.mesh
         bcs_p = problem.bcs_p
         bcs_u = problem.bcs_u
 
-        self._U = fire.VectorFunctionSpace(mesh, 'CG', u_degree)
-        self._V = fire.FunctionSpace(mesh, 'CG', p_degree)
+        if method == 'cgls':
+            pressure_family = 'CG'
+            velocity_family = 'CG'
+            dirichlet_method = 'topological'
+        elif method == 'dgls':
+            pressure_family = 'DG'
+            velocity_family = 'DG'
+            dirichlet_method = 'geometric'
+        else:
+            raise ValueError(f'Invalid FEM for solving Darcy Flow. Method provided: {method}')
+
+        self._U = fire.VectorFunctionSpace(mesh, velocity_family, u_degree)
+        self._V = fire.FunctionSpace(mesh, pressure_family, p_degree)
         self._W = self._U * self._V
 
-        self._a, self._L = self.cgls_form(problem, mesh, bcs_p)
+        if method == 'cgls':
+            self._a, self._L = self.cgls_form(problem, mesh, bcs_p)
+        if method == 'dgls':
+            self._a, self._L = self.dgls_form(problem, mesh, bcs_p)
 
         self.solution = fire.Function(self._W)
         self.u = fire.Function(self._U, name='u')
@@ -61,16 +75,20 @@ class DarcySolver:
         self.bcs = []
         for uboundary, iboundary, component in bcs_u:
             if component != None:
-                self.bcs.append(fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary))
+                self.bcs.append(
+                    fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
+                )
             else:
-                self.bcs.append(fire.DirichletBC(self._W.sub(0), uboundary, iboundary))
+                self.bcs.append(
+                    fire.DirichletBC(self._W.sub(0), uboundary, iboundary, method=dirichlet_method)
+                )
 
-        # solver_parameters = {
+        # self.solver_parameters = {
         #     # This setup is suitable for 3D
-        #     'ksp_type': 'fgmres',
-        #     'pc_type': 'ilu',
+        #     'ksp_type': 'lgmres',
+        #     'pc_type': 'lu',
         #     'mat_type': 'aij',
-        #     'ksp_rtol': 1e-5,
+        #     'ksp_rtol': 1e-8,
         #     'ksp_max_it': 2000,
         #     'ksp_monitor': None
         # }
@@ -86,7 +104,6 @@ class DarcySolver:
         self.solver = fire.LinearVariationalSolver(lvp, solver_parameters=self.solver_parameters)
 
     def cgls_form(self, problem, mesh, bcs_p):
-
         rho = problem.rho
         mu = problem.mu
         k = problem.k
@@ -143,6 +160,58 @@ class DarcySolver:
         # Classical mixed terms
         a = (dot(inv_kappa * q, w) - div(w) * p - delta_0 * v * div(q)) * dx
         L = -delta_0 * f * v * dx
+
+        # Add the contributions of the pressure boundary conditions to L
+        for pboundary, iboundary in bcs_p:
+            L -= pboundary * dot(w, n) * ds(iboundary)
+
+        # Stabilizing terms
+        a += delta_1 * inner(kappa * (inv_kappa * q + grad(p)), delta_0 * inv_kappa * w + grad(v)) * dx
+        a += delta_2 * inv_kappa * div(q) * div(w) * dx
+        a += delta_3 * inner(kappa * curl(inv_kappa * q), curl(inv_kappa * w)) * dx
+        L += delta_2 * inv_kappa * f * div(w) * dx
+
+        return a, L
+
+    def dgls_form(self, problem, mesh, bcs_p):
+        rho = problem.rho
+        mu = problem.mu
+        k = problem.k
+        f = problem.f
+
+        q, p = fire.TrialFunctions(self._W)
+        w, v = fire.TestFunctions(self._W)
+
+        n = fire.FacetNormal(mesh)
+        h = fire.CellDiameter(mesh)
+
+        # Stabilizing parameters
+        has_mesh_characteristic_length = False
+        delta_0 = fire.Constant(1)
+        delta_1 = fire.Constant(-1 / 2)
+        delta_2 = fire.Constant(1 / 2)
+        delta_3 = fire.Constant(1 / 2)
+        eta_p = fire.Constant(100)
+        eta_q = fire.Constant(10)
+        h_avg = (h('+') + h('-')) / 2.
+        if has_mesh_characteristic_length:
+            delta_2 = delta_2 * h * h
+            delta_3 = delta_3 * h * h
+
+        kappa = rho * k / mu
+        inv_kappa = 1.0 / kappa
+
+        # Classical mixed terms
+        a = (dot(inv_kappa * q, w) - div(w) * p - delta_0 * v * div(q)) * dx
+        L = -delta_0 * f * v * dx
+
+        # DG terms
+        a += jump(w, n) * avg(p) * dS - \
+             avg(v) * jump(q, n) * dS
+
+        # Edge stabilizing terms
+        a += (eta_q * h_avg) * avg(inv_kappa) * (jump(q, n) * jump(w, n)) * dS + \
+             (eta_p / h_avg) * avg(kappa) * dot(jump(v, n), jump(p, n)) * dS
 
         # Add the contributions of the pressure boundary conditions to L
         for pboundary, iboundary in bcs_p:
