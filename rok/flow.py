@@ -134,11 +134,9 @@ class DarcySolver:
         self.bcs = []
         for uboundary, iboundary, component in bcs_u:
             if component != None:
-                # self.bcs.append(DirichletExpressionBC(W.sub(0).sub(component), rho*uboundary, iboundary))
-                self.bcs.append(fire.DirichletBC(W.sub(0).sub(component), rho*uboundary, iboundary))
+                self.bcs.append(DirichletExpressionBC(W.sub(0).sub(component), rho*uboundary, iboundary))
             else:
-                # self.bcs.append(DirichletExpressionBC(W.sub(0), rho*uboundary, iboundary))
-                self.bcs.append(fire.DirichletBC(W.sub(0), rho*uboundary, iboundary))
+                self.bcs.append(DirichletExpressionBC(W.sub(0), rho*uboundary, iboundary))
 
         # solver_parameters = {
         #     # This setup is suitable for 3D
@@ -162,11 +160,10 @@ class DarcySolver:
 
 
     def solve(self):
-        # for bc in self.bcs:
-        #     bc.update()
+        for bc in self.bcs:
+            bc.update()
         self.solver.solve()
         self.p.assign(self.solution.sub(1))
         self.u.assign(self.solution.sub(0))
         for i in range(self.u.dat.data.shape[1]):
             self.u.dat.data[:, i] /= self.problem.rho.dat.data
-        # self.u /= self.problem.rho
