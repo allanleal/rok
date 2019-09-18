@@ -2,7 +2,6 @@ import firedrake as fire
 from gstools import SRF, Gaussian, TPLStable
 from scipy.interpolate import RegularGridInterpolator
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def rescale_field(x_input, x_new_min, x_new_max):
@@ -25,9 +24,6 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     xyz = [range(size) for _ in range(dim)]
 
     data = srf(xyz, mesh_type='structured')
-
-    plt.imshow(data, cmap=plt.get_cmap('coolwarm'))
-    plt.savefig('data.png')
 
     # The min and max values of x,y,z in the mesh
     xyz_min = [mesh.coordinates.dat.data[:, i].min() for i in range(dim)]
