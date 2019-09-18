@@ -41,7 +41,7 @@ class DarcyProblem:
 
 class DarcySolver:
 
-    def __init__(self, problem, u_degree=1, p_degree=1, method='cgls'):
+    def __init__(self, problem, u_degree=1, p_degree=1, lambda_degree=1, method='cgls'):
         self.problem = problem
         mesh = problem.mesh
         bcs_p = problem.bcs_p
@@ -55,53 +55,86 @@ class DarcySolver:
             pressure_family = 'DG'
             velocity_family = 'DG'
             dirichlet_method = 'geometric'
+        elif method == 'sdhm':
+            pressure_family = 'DG'
+            velocity_family = 'DG'
+            trace_family = 'HDiv Trace'
+            dirichlet_method = 'topological'
         else:
             raise ValueError(f'Invalid FEM for solving Darcy Flow. Method provided: {method}')
 
         self._U = fire.VectorFunctionSpace(mesh, velocity_family, u_degree)
         self._V = fire.FunctionSpace(mesh, pressure_family, p_degree)
-        self._W = self._U * self._V
 
-        if method == 'cgls':
-            self._a, self._L = self.cgls_form(problem, mesh, bcs_p)
-        if method == 'dgls':
-            self._a, self._L = self.dgls_form(problem, mesh, bcs_p)
+        if method == 'cgls' or method == 'dgls':
+            self._W = self._U * self._V
+        if method == 'sdhm':
+            self._T = fire.FunctionSpace(mesh, trace_family, lambda_degree)
+            self._W = self._U * self._V * self._T
 
         self.solution = fire.Function(self._W)
         self.u = fire.Function(self._U, name='u')
         self.p = fire.Function(self._V, name='p')
+        if method == 'cgls':
+            self._a, self._L = self.cgls_form(problem, mesh, bcs_p)
+        if method == 'dgls':
+            self._a, self._L = self.dgls_form(problem, mesh, bcs_p)
+        if method == 'sdhm':
+            self._a, self._L = self.sdhm_form(problem, mesh, bcs_p, bcs_u)
 
         # Construct the Dirichlet boundary conditions for velocity
-        self.bcs = []
-        for uboundary, iboundary, component in bcs_u:
-            if component != None:
-                self.bcs.append(
-                    fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
-                )
-            else:
-                self.bcs.append(
-                    fire.DirichletBC(self._W.sub(0), uboundary, iboundary, method=dirichlet_method)
-                )
+        if method == 'sdhm':
+            self.solver_parameters = {
+                'snes_type': 'ksponly',
+                'mat_type': 'matfree',
+                'pmat_type': 'matfree',
+                'ksp_type': 'preonly',
+                'pc_type': 'python',
+                # Use the static condensation PC for hybridized problems
+                # and use a direct solve on the reduced system for lambda_h
+                'pc_python_type': 'firedrake.SCPC',
+                'pc_sc_eliminate_fields': '0, 1',
+                'condensed_field': {
+                    'ksp_type': 'preonly',
+                    'pc_type': 'lu',
+                    'pc_factor_mat_solver_type': 'mumps'
+                }
+            }
 
-        # self.solver_parameters = {
-        #     # This setup is suitable for 3D
-        #     'ksp_type': 'lgmres',
-        #     'pc_type': 'lu',
-        #     'mat_type': 'aij',
-        #     'ksp_rtol': 1e-8,
-        #     'ksp_max_it': 2000,
-        #     'ksp_monitor': None
-        # }
-        self.solver_parameters = {
-            "mat_type": "aij",
-            "ksp_type": "preonly",
-            "pc_type": "lu",
-            "pc_factor_mat_solver_type": "mumps"
-        }
+            F = self._a - self._L
+            nvp = fire.NonlinearVariationalProblem(F, self.solution)
 
-        lvp = fire.LinearVariationalProblem(self._a, self._L, self.solution, bcs=self.bcs)
+            self.solver = fire.NonlinearVariationalSolver(nvp, solver_parameters=self.solver_parameters)
+        else:
+            for uboundary, iboundary, component in bcs_u:
+                if component is not None:
+                    self.bcs.append(
+                        fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
+                    )
+                else:
+                    self.bcs.append(
+                        fire.DirichletBC(self._W.sub(0), uboundary, iboundary, method=dirichlet_method)
+                    )
 
-        self.solver = fire.LinearVariationalSolver(lvp, solver_parameters=self.solver_parameters)
+            # self.solver_parameters = {
+            #     # This setup is suitable for 3D
+            #     'ksp_type': 'lgmres',
+            #     'pc_type': 'lu',
+            #     'mat_type': 'aij',
+            #     'ksp_rtol': 1e-8,
+            #     'ksp_max_it': 2000,
+            #     'ksp_monitor': None
+            # }
+            self.solver_parameters = {
+                "mat_type": "aij",
+                "ksp_type": "preonly",
+                "pc_type": "lu",
+                "pc_factor_mat_solver_type": "mumps"
+            }
+
+            lvp = fire.LinearVariationalProblem(self._a, self._L, self.solution, bcs=self.bcs)
+
+            self.solver = fire.LinearVariationalSolver(lvp, solver_parameters=self.solver_parameters)
 
     def cgls_form(self, problem, mesh, bcs_p):
         rho = problem.rho
@@ -216,6 +249,79 @@ class DarcySolver:
         # Add the contributions of the pressure boundary conditions to L
         for pboundary, iboundary in bcs_p:
             L -= pboundary * dot(w, n) * ds(iboundary)
+
+        # Stabilizing terms
+        a += delta_1 * inner(kappa * (inv_kappa * q + grad(p)), delta_0 * inv_kappa * w + grad(v)) * dx
+        a += delta_2 * inv_kappa * div(q) * div(w) * dx
+        a += delta_3 * inner(kappa * curl(inv_kappa * q), curl(inv_kappa * w)) * dx
+        L += delta_2 * inv_kappa * f * div(w) * dx
+
+        return a, L
+
+    def sdhm_form(self, problem, mesh, bcs_p, bcs_u):
+        rho = problem.rho
+        mu = problem.mu
+        k = problem.k
+        f = problem.f
+
+        # q, p, lambda_h = fire.TrialFunctions(self._W)
+        # solution = fire.Function(self._W)
+        q, p, lambda_h = fire.split(self.solution)
+        w, v, mu_h = fire.TestFunctions(self._W)
+
+        n = fire.FacetNormal(mesh)
+        h = fire.CellDiameter(mesh)
+
+        # Stabilizing parameters
+        has_mesh_characteristic_length = False
+        beta_0 = fire.Constant(1e-10)
+        delta_0 = fire.Constant(1)
+        delta_1 = fire.Constant(-1 / 2)
+        delta_2 = fire.Constant(1 / 2)
+        delta_3 = fire.Constant(1 / 2)
+
+        h_avg = (h('+') + h('-')) / 2.
+        beta = beta_0 / h
+        beta_avg = beta_0 / h('+')
+        if has_mesh_characteristic_length:
+            delta_2 = delta_2 * h * h
+            delta_3 = delta_3 * h * h
+
+        kappa = rho * k / mu
+        inv_kappa = 1.0 / kappa
+
+        # Classical mixed terms
+        a = (dot(inv_kappa * q, w) - div(w) * p - delta_0 * v * div(q)) * dx
+        L = -delta_0 * f * v * dx
+
+        # Hybridization terms
+        a += lambda_h('+') * jump(w, n) * dS + mu_h('+') * jump(q, n) * dS
+        a += beta_avg * kappa('+') * (lambda_h('+') - p('+')) * (mu_h('+') - v('+')) * dS
+
+        # Add the contributions of the pressure boundary conditions to L
+        for pboundary, iboundary in bcs_p:
+            L -= pboundary * dot(w, n) * ds(iboundary)
+            a += beta * kappa * (lambda_h - pboundary) * mu_h * ds(iboundary)
+
+        # for uboundary, iboundary in bcs_u:
+        #     a += mu_h * (dot(q, n) - dot(uboundary, n)) * ds(iboundary)
+
+        for uboundary, iboundary, component in bcs_u:
+            if component is not None:
+                # self.bcs.append(
+                #     fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
+                # )
+                vector_on_boundary = fire.Function(self._W)
+                vector_on_boundary.assign(0)
+                vector_on_boundary.sub(component).assign(uboundary)
+                # a += mu_h * (dot(q, n) - dot(uboundary, n)) * ds(iboundary)
+                a += mu_h * dot(q, n) * ds(iboundary)
+            else:
+                # self.bcs.append(
+                #     fire.DirichletBC(self._W.sub(0), uboundary, iboundary, method=dirichlet_method)
+                # )
+                # a += mu_h * (dot(q, n) - dot(uboundary, n)) * ds(iboundary)
+                a += mu_h * dot(q, n) * ds(iboundary)
 
         # Stabilizing terms
         a += delta_1 * inner(kappa * (inv_kappa * q + grad(p)), delta_0 * inv_kappa * w + grad(v)) * dx
