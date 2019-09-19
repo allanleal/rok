@@ -108,6 +108,7 @@ class DarcySolver:
 
             self.solver = fire.NonlinearVariationalSolver(nvp, solver_parameters=self.solver_parameters)
         else:
+            self.bcs = []
             for uboundary, iboundary, component in bcs_u:
                 if component is not None:
                     self.bcs.append(
