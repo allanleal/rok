@@ -311,6 +311,7 @@ class DarcySolver:
                 # self.bcs.append(
                 #     fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
                 # )
+                dim = mesh.geometric_dimension()
                 vector_on_boundary = fire.Function(self._W)
                 vector_on_boundary.assign(0)
                 vector_on_boundary.sub(component).assign(uboundary)
