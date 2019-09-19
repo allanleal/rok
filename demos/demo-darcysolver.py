@@ -18,7 +18,7 @@ problem.addPressureBC(1e5, 'right')
 problem.addVelocityComponentBC(0.0, 'y', 'bottom')
 problem.addVelocityComponentBC(0.0, 'y', 'top')
 
-solver = rok.DarcySolver(problem)
+solver = rok.DarcySolver(problem, method='sdhm')
 solver.solve()
 
 file = rok.File('demo-darcysolver.pvd')
