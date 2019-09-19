@@ -275,7 +275,7 @@ class DarcySolver:
 
         # Stabilizing parameters
         has_mesh_characteristic_length = True
-        beta_0 = fire.Constant(1e-15)
+        beta_0 = fire.Constant(1e-12)
         delta_0 = fire.Constant(1)
         delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
