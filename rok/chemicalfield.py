@@ -23,6 +23,9 @@ class _ChemicalField(object):
         # Initialize the chemical state of every degree-of-freedom
         self.states = [ChemicalState(system) for i in range(self.num_dofs)]
 
+        # Initialize the chemical properties of every degree-of-freedom
+        self.properties = [ChemicalProperties(system) for i in range(self.num_dofs)]
+
         # Initialize the indices of fluid and solid phases
         self.iphases_fluid = self.partition.indicesFluidPhases()
         self.iphases_solid = self.partition.indicesSolidPhases()
@@ -75,9 +78,12 @@ class _ChemicalField(object):
 
     def update(self):
         for k in range(self.num_dofs):
-            properties = self.states[k].properties()
-            v = properties.phaseVolumes().val
-            m = properties.phaseMasses().val
+            Tk = self.states[k].temperature()
+            Pk = self.states[k].pressure()
+            nk = self.states[k].speciesAmounts()
+            self.properties[k].update(Tk, Pk, nk)
+            v = self.properties[k].phaseVolumes().val
+            m = self.properties[k].phaseMasses().val
             volume_fluid = sum([v[i] for i in self.iphases_fluid])
             volume_solid = sum([v[i] for i in self.iphases_solid])
             self.phi_values[k] = 1.0 - volume_solid
@@ -124,20 +130,23 @@ class _ChemicalField(object):
 
     def volume(self):
         for k in range(self.num_dofs):
-            properties = self.states[k].properties()
-            v = properties.phaseVolumes().val
+            v = self.properties[k].phaseVolumes().val
             self.values[k] = sum(v)
         self.out.vector()[:] = self.values
         self.out.rename('Volume', 'Volume')
         return self.out
 
 
-#     def ph(self, species):
-#         ispecies = self.system.indexSpecies(species)
-#         for k in range(self.num_dofs):
-#             self.values[k] = self.states[k].speciesAmount(ispecies)
-#         self.out.vector()[:] = self.values
-#         return self.out
+    def pH(self):
+        iH = self.system.indexSpecies('H+')
+        ln10 = 2.30258509299
+        for k in range(self.num_dofs):
+            ln_aH = self.properties[k].lnActivities().val[iH]
+            pH = -ln_aH/ln10
+            self.values[k] = pH
+        self.out.vector()[:] = self.values
+        self.out.rename('pH', 'pH')
+        return self.out
 
 
 
@@ -209,4 +218,8 @@ class ChemicalField(object):
 
     def elementAmountInPhase(self, element, phase):
         return self.pimpl.elementAmountInPhase(element, phase)
+
+
+    def pH(self):
+        return self.pimpl.pH()
 
