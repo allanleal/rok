@@ -13,3 +13,6 @@ __pycache__/
 firedrake-install
 firedrake
 firedrake-install.log
+
+# Other files
+results/
