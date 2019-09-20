@@ -14,10 +14,10 @@ def vectorComponentNameToIndex(name):
 
 
 class DirichletExpressionBC(fire.DirichletBC):
-    def __init__(self, function_space, expr, boundary):
+    def __init__(self, function_space, expr, boundary, method="topological"):
         self.uboundary = fire.Function(function_space)
         self.interpolator = fire.Interpolator(expr, self.uboundary)
-        super().__init__(function_space, self.uboundary, boundary)
+        super().__init__(function_space, self.uboundary, boundary, method)
 
 
     def update(self):
