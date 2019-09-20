@@ -22,8 +22,12 @@ Ly = 1.0          # the length of the mesh along the y-axis
 nsteps = 10000    # the number of time steps
 cfl = 0.01        # the CFL number to be used in the calculation of time step
 
+# method = 'cgls'
+method = 'dgls'
+# method = 'sdhm'
+
 # The path to where the result files are output
-resultsdir = 'results/demo-transport-in-heterogeneous-medium/'
+resultsdir = 'results/demo-transport-in-heterogeneous-medium/{}/'.format(method)
 
 # Initialise the mesh
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
@@ -56,7 +60,7 @@ problem.addPressureBC(1e5, 'right')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 
-flow = rok.DarcySolver(problem)
+flow = rok.DarcySolver(problem, method=method)
 flow.solve()
 
 rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)

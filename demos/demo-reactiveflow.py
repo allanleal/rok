@@ -25,8 +25,12 @@ T  = 60.0 + 273.15     # the temperature (in units of K)
 P  = 1e5               # the pressure (in units of Pa)
 tend = 10*day          # the final time (in units of s)
 
+# method = 'cgls'
+# method = 'dgls'
+method = 'sdhm'
+
 # The path to where the result files are output
-resultsdir = 'results/demo-reactiveflow/'
+resultsdir = 'results/demo-reactiveflow/{}/'.format(method)
 
 # Initialise the mesh
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
@@ -102,7 +106,7 @@ problem.addPressureBC(1e5, 'right')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 
-flow = rok.DarcySolver(problem)
+flow = rok.DarcySolver(problem, method=method)
 
 rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)
 
