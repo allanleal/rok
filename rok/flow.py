@@ -233,8 +233,8 @@ class DarcySolver:
         delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
         delta_3 = fire.Constant(1 / 2)
-        eta_p = fire.Constant(10)
-        eta_q = fire.Constant(10)
+        eta_p = fire.Constant(100)
+        eta_q = fire.Constant(100)
         h_avg = (h('+') + h('-')) / 2.
         if has_mesh_characteristic_length:
             delta_2 = delta_2 * h * h

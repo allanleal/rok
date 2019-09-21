@@ -39,7 +39,7 @@ x, y = rok.SpatialCoordinate(mesh)
 # Model parameters
 rho = rok.Constant(1000.0)  # water density (in units of kg/m3)
 mu = rok.Constant(8.9e-4)  # water viscosity (in units of Pa*s)
-k = rok.permeability(V, minval=1e-18, maxval=1e-12)  # Sandstone (?)
+k = rok.permeability(V, minval=1e-18, len_scale=20)  # Sandstone (?)
 f = rok.Constant(0.0)  # the source rate in the flow calculation
 
 D  = rok.Constant(1.0e-9)               # the diffusion coefficient (in units of m2/s)
@@ -54,8 +54,8 @@ problem.setFluidDensity(rho)
 problem.setFluidViscosity(mu)
 problem.setRockPermeability(k)
 problem.setSourceRate(f)
-problem.addPressureBC(5e6, 'left')
-problem.addPressureBC(5e5, 'right')
+problem.addPressureBC(5e6, 'left')  # injection well
+problem.addPressureBC(5e5, 'right')  # production well
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 

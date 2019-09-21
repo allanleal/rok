@@ -23,7 +23,7 @@ x, y = rok.SpatialCoordinate(mesh)
 # Model parameters
 rho = rok.Constant(1000.0)  # water density (in units of kg/m3)
 mu = rok.Constant(8.9e-4)  # water viscosity (in units of Pa*s)
-k = rok.permeability(V, minval=1e-18)
+k = rok.permeability(V, minval=1e-18, len_scale=20)
 f = rok.Constant(0.0)  # the source rate in the flow calculation
 
 # Initialize the Darcy flow solver
@@ -37,7 +37,7 @@ problem.addPressureBC(5e5, 'right')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 
-flow = rok.DarcySolver(problem, method='sdhm')
+flow = rok.DarcySolver(problem, method=method)
 flow.solve()
 
 rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)
