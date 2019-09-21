@@ -23,8 +23,8 @@ nsteps = 10000    # the number of time steps
 cfl = 0.01        # the CFL number to be used in the calculation of time step
 
 # method = 'cgls'
-method = 'dgls'
-# method = 'sdhm'
+# method = 'dgls'
+method = 'sdhm'
 
 # The path to where the result files are output
 resultsdir = 'results/demo-transport-in-heterogeneous-medium/{}/'.format(method)
@@ -39,15 +39,14 @@ x, y = rok.SpatialCoordinate(mesh)
 # Model parameters
 rho = rok.Constant(1000.0)  # water density (in units of kg/m3)
 mu = rok.Constant(8.9e-4)  # water viscosity (in units of Pa*s)
-k = rok.permeability(V)
+k = rok.permeability(V, minval=1e-18, maxval=1e-12)  # Sandstone (?)
 f = rok.Constant(0.0)  # the source rate in the flow calculation
 
 D  = rok.Constant(1.0e-9)               # the diffusion coefficient (in units of m2/s)
 
 c = rok.Function(V, name="Concentration")
 
-cL = rok.Function(V)
-cL.interpolate(1.0 + 0.001*rok.sin(10*pi*y))
+cL = rok.Constant(1.0)
 
 # Initialize the Darcy flow solver
 problem = rok.DarcyProblem(mesh)
@@ -55,8 +54,8 @@ problem.setFluidDensity(rho)
 problem.setFluidViscosity(mu)
 problem.setRockPermeability(k)
 problem.setSourceRate(f)
-problem.addPressureBC(1e5 + 1000, 'left')
-problem.addPressureBC(1e5, 'right')
+problem.addPressureBC(5e6, 'left')
+problem.addPressureBC(5e5, 'right')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 

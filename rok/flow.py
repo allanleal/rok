@@ -47,6 +47,7 @@ class DarcySolver:
 
     def __init__(self, problem, u_degree=1, p_degree=1, lambda_degree=1, method='cgls'):
         self.problem = problem
+        self.method = method
         mesh = problem.mesh
         bcs_p = problem.bcs_p
         bcs_u = problem.bcs_u
@@ -157,9 +158,9 @@ class DarcySolver:
 
         # Stabilizing parameters
         h = fire.CellDiameter(mesh)
-        has_mesh_characteristic_length = False
-        delta_0 = fire.Constant(-1)
-        delta_1 = fire.Constant(1 / 2)
+        has_mesh_characteristic_length = True
+        delta_0 = fire.Constant(1)
+        delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
         delta_3 = fire.Constant(1 / 2)
 
@@ -227,12 +228,12 @@ class DarcySolver:
         h = fire.CellDiameter(mesh)
 
         # Stabilizing parameters
-        has_mesh_characteristic_length = False
+        has_mesh_characteristic_length = True
         delta_0 = fire.Constant(1)
         delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
         delta_3 = fire.Constant(1 / 2)
-        eta_p = fire.Constant(100)
+        eta_p = fire.Constant(10)
         eta_q = fire.Constant(10)
         h_avg = (h('+') + h('-')) / 2.
         if has_mesh_characteristic_length:
@@ -280,7 +281,7 @@ class DarcySolver:
 
         # Stabilizing parameters
         has_mesh_characteristic_length = True
-        beta_0 = fire.Constant(1e-12)
+        beta_0 = fire.Constant(1e-15)
         delta_0 = fire.Constant(1)
         delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
@@ -338,8 +339,9 @@ class DarcySolver:
         return a, L
 
     def solve(self):
-        for bc in self.bcs:
-            bc.update()
+        if not self.method == 'sdhm':  # TODO: temporary fix. It has to be improved.
+            for bc in self.bcs:
+                bc.update()
         self.solver.solve()
         self.p.assign(self.solution.sub(1))
         self.u.assign(self.solution.sub(0))
