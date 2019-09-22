@@ -3,7 +3,7 @@ from firedrake import *
 
 class _TransportSolver(object):
 
-    def __init__(self, method='supg'):
+    def __init__(self, method='dg'):
         # Initialize default values for the velocity, diffusion and source parameters
         self.velocity = Constant(0.0)
         self.diffusion = Constant(0.0)
@@ -199,7 +199,7 @@ class _TransportSolver(object):
 
 
 class TransportSolver(object):
-    def __init__(self, method='supg'):
+    def __init__(self, method='dg'):
         self.pimpl = _TransportSolver(method=method)
 
     def setVelocity(self, velocity):
