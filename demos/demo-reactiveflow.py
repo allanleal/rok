@@ -36,6 +36,8 @@ resultsdir = 'results/demo-reactiveflow/{}/'.format(method)
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
 
 V = rok.FunctionSpace(mesh, "CG", 1)
+K_space = rok.FunctionSpace(mesh, "DG", 0)
+V_transport = rok.FunctionSpace(mesh, "CG", 1)
 
 x, y = rok.SpatialCoordinate(mesh)
 
@@ -91,7 +93,7 @@ state_ic.scalePhaseVolume('Calcite', 0.018, 'm3')
 state_bc.scaleVolume(1.0)
 
 # Initialise the chemical field
-field = rok.ChemicalField(system, V)
+field = rok.ChemicalField(system, V_transport)
 field.fill(state_ic)
 field.update()
 
