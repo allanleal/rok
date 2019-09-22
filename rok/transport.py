@@ -107,12 +107,13 @@ class _TransportSolver(object):
         theta = Constant(0.5)
         h = CellDiameter(mesh)
 
+        # Nonsymmetric Interior Penalty Galerkin (NIPG), proposed by Riviere, Wheeler and Girault (1999)
         def a(u, v):
             a_int = dot(grad(v), diffusion * grad(u) - velocity * u) * dx
             a_velocity = dot(jump(v), un('+') * u('+') - un('-') * u('-')) * dS + dot(v, un * u) * ds
-            a_facets = diffusion * (alpha / avg(h)) * dot(jump(u, n), jump(v, n)) * dS \
-                       - diffusion * dot(avg(grad(u)), jump(v, n)) * dS \
-                       - diffusion * dot(jump(u, n), avg(grad(v))) * dS
+            a_facets = diffusion('+') * (alpha('+') / h('+')) * dot(jump(u, n), jump(v, n)) * dS \
+                       - dot(avg(diffusion * grad(u)), jump(v, n)) * dS \
+                       + dot(jump(u, n), avg(diffusion * grad(v))) * dS
             a = a_int + a_facets + a_velocity
             return a
 
