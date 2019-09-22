@@ -33,7 +33,7 @@ resultsdir = 'results/demo-transport-in-heterogeneous-medium/{}/'.format(method)
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
 
 V = rok.FunctionSpace(mesh, "CG", 1)
-
+V_transport = rok.FunctionSpace(mesh, "DG", 1)
 x, y = rok.SpatialCoordinate(mesh)
 
 # Model parameters
@@ -44,7 +44,7 @@ f = rok.Constant(0.0)  # the source rate in the flow calculation
 
 D  = rok.Constant(1.0e-9)               # the diffusion coefficient (in units of m2/s)
 
-c = rok.Function(V, name="Concentration")
+c = rok.Function(V_transport, name="Concentration")
 
 cL = rok.Constant(1.0)
 
@@ -65,13 +65,13 @@ flow.solve()
 rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)
 
 # Initialize the transport solver
-transport = rok.TransportSolver()
+transport = rok.TransportSolver(method='dg')
 transport.setVelocity(flow.u)
 transport.setDiffusion(D)
 transport.setSource(f)
 
 # bc = rok.DirichletBC(V, rok.Constant(1.0), 1)
-bc = rok.DirichletBC(V, cL, 1)
+bc = rok.DirichletBC(V_transport, cL, 1, method='geometric')
 transport.setBoundaryConditions([bc])
 
 t = 0.0

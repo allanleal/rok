@@ -38,15 +38,15 @@ class _TransportSolver(object):
         self.initialized = True
 
         V = function_space
+        self.u = Function(V)
 
         if self.method == 'supg':
             self.a, self.L = self._supg_form(V)
-        elif self.method =='dg':
-            self.a, self.L = self._dg_advection(V)
+        elif self.method == 'dg':
+            self.a, self.L = self._primal_dg_advection(V)
+            # self.a, self.L = self._improved_dg_advection(V)  # Work in progress (don't use it)
         else:
             raise ValueError(f'Invalid method for transport problem. Method provided {self.method} is not available.')
-
-        self.u = Function(V)
 
         self.problem = LinearVariationalProblem(self.a, self.L, self.u, bcs=self.bcs)
         self.solver = LinearVariationalSolver(self.problem)
@@ -85,9 +85,7 @@ class _TransportSolver(object):
 
         return lhs(F), rhs(F)
 
-    def _dg_advection(self, function_space):
-        self.initialized = True
-
+    def _primal_dg_advection(self, function_space):
         velocity = self.velocity
         diffusion = self.diffusion
         source = self.source
@@ -96,15 +94,53 @@ class _TransportSolver(object):
         mesh = function_space.mesh()
 
         V = function_space
-        # V = FunctionSpace(mesh, "DQ", 1)
-        # W = VectorFunctionSpace(mesh, "CG", 1)
 
         u0 = self.u0 = Function(V)
 
         u = TrialFunction(V)
         v = TestFunction(V)
 
-        # self.a = v * u * dx
+        n = FacetNormal(mesh)
+        un = 0.5 * (dot(velocity, n) + abs(dot(velocity, n)))
+
+        alpha = Constant(1e0)
+        theta = Constant(0.5)
+        h = CellDiameter(mesh)
+
+        def a(u, v):
+            a_int = dot(grad(v), diffusion * grad(u) - velocity * u) * dx
+            a_velocity = dot(jump(v), un('+') * u('+') - un('-') * u('-')) * dS + dot(v, un * u) * ds
+            a_facets = diffusion * (alpha / avg(h)) * dot(jump(u, n), jump(v, n)) * dS \
+                       - diffusion * dot(avg(grad(u)), jump(v, n)) * dS \
+                       - diffusion * dot(jump(u, n), avg(grad(v))) * dS
+            a = a_int + a_facets + a_velocity
+            return a
+
+        # Define variational forms
+        a0 = a(u0, v)
+        a1 = a(u, v)
+
+        A = (1 / dt) * inner(u, v) * dx - (1 / dt) * inner(u0, v) * dx + theta * a1 + (1 - theta) * a0
+        L_rhs = dt * source * v * dx
+        F = A - L_rhs
+
+        return lhs(F), rhs(F)
+
+    # Don't use this one. Work in progress.
+    def _improved_dg_advection(self, function_space):
+        velocity = self.velocity
+        diffusion = self.diffusion
+        source = self.source
+        dt = self.dt
+
+        mesh = function_space.mesh()
+
+        V = function_space
+
+        u0 = self.u0 = Function(V)
+
+        u = TrialFunction(V)
+        v = TestFunction(V)
 
         n = FacetNormal(mesh)
         un = 0.5 * (dot(velocity, n) + abs(dot(velocity, n)))
@@ -112,14 +148,31 @@ class _TransportSolver(object):
         alpha = Constant(1e0)
         theta = Constant(1.0)
         h = CellDiameter(mesh)
-        # u_in = Constant(1.0)
 
         def a(u, v):
-            a_int = dot(grad(v), diffusion * grad(u) - velocity * u) * dx
-            a_velocity = dot(jump(v), un('+') * u('+') - un('-') * u('-')) * dS + dot(v, un * u) * ds
+            a_int = dot(grad(v), diffusion * grad(u)) * dx
+            # Internal facets
             a_facets = diffusion * (alpha / avg(h)) * dot(jump(u, n), jump(v, n)) * dS \
-                      - diffusion * dot(avg(grad(u)), jump(v, n)) * dS \
-                      - diffusion * dot(jump(u, n), avg(grad(v))) * dS
+                       - diffusion * dot(avg(grad(u)), jump(v, n)) * dS \
+                       - diffusion * dot(jump(u, n), avg(grad(v))) * dS #\
+                       # - conditional(
+                       #      dot(velocity, n) < 0, dot(diffusion('+') * grad(u)('+'), jump(v, n)), 0
+                       # ) * ds \
+                       # - conditional(
+                       #      dot(velocity, n) > 0, dot(diffusion('-') * grad(u)('-'), jump(v, n)), 0
+                       # ) * ds \
+                       # - conditional(
+                       #      dot(velocity, n) < 0, dot(diffusion('+') * grad(v)('+'), jump(u, n)), 0
+                       # ) * ds \
+                       # - conditional(
+                       #      dot(velocity, n) > 0, dot(diffusion('-') * grad(v)('-'), jump(u, n)), 0
+                       # ) * ds
+            # External facets
+            a_facets += (alpha / h) * dot(jump(u, n), jump(v, n)) * ds \
+                        - dot(avg(diffusion * grad(u)), jump(v, n)) * ds \
+                        - dot(avg(diffusion * grad(v)), jump(u, n)) * ds
+
+            a_velocity = dot(jump(v), un('+') * u('+') - un('-') * u('-')) * dS + dot(v, un * u) * ds
 
             a = a_int + a_facets + a_velocity
             return a
