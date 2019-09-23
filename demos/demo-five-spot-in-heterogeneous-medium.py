@@ -37,7 +37,7 @@ k = rok.permeability(V, minval=1e-20, len_scale=25, seed=666)
 f = rok.Constant(0.0)  # the source rate in the flow calculation
 
 # Boundary conditions
-h_well = rok.Constant(0.01 * Lx)
+h_well = rok.Constant(0.02 * Lx)
 
 # Velocity BC?
 # v_left = rok.conditional(y < h_well, -rok.sqrt(rok.Constant(2)) / (3 * (h_well - y)), 0)
