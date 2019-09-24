@@ -81,8 +81,8 @@ f.interpolate(
 has_mesh_characteristic_length = False
 delta_0 = Constant(1)
 delta_1 = Constant(-1 / 2)
-delta_2 = Constant(0)
-delta_3 = Constant(0)
+delta_2 = Constant(1 / 2)
+delta_3 = Constant(1 / 2)
 eta_p = Constant(100)
 eta_u = Constant(100)
 h_avg = (h('+') + h('-')) / 2.
