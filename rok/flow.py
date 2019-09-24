@@ -64,7 +64,7 @@ class DarcySolver:
             pressure_family = 'DG'
             velocity_family = 'DG'
             trace_family = 'HDiv Trace'
-            dirichlet_method = 'topological'
+            dirichlet_method = 'geometric'
         else:
             raise ValueError(f'Invalid FEM for solving Darcy Flow. Method provided: {method}')
 
