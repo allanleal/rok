@@ -8,8 +8,8 @@ except:
 
 resultsdir = f'results/demo-standalone-five-spot/'
 
-nx, ny = 50, 50
-Lx, Ly = 1000.0, 1000.0
+nx, ny = 80, 80
+Lx, Ly = 1e3, 1e3
 quadrilateral = True
 mesh = RectangleMesh(nx, ny, Lx, Ly, quadrilateral=quadrilateral)
 
@@ -23,6 +23,9 @@ U = VectorFunctionSpace(mesh, velocity_family, degree)
 V = FunctionSpace(mesh, pressure_family, degree)
 W = U * V
 
+# For some parameters
+dG0 = FunctionSpace(mesh, 'DG', 0)
+
 # Trial and test functions
 u, p = TrialFunctions(W)
 v, q = TestFunctions(W)
@@ -33,8 +36,17 @@ n = FacetNormal(mesh)
 h = CellDiameter(mesh)
 x, y = SpatialCoordinate(mesh)
 
+
 # Model parameters
-k = Constant(1000.0)
+class k_expression(Expression):
+    def eval(self, values, x):
+        if 0.6 * Lx - Lx / 5 <= x[0] <= 0.6 * Lx + Lx / 5 and 0.4 * Ly - Ly / 5 <= x[1] <= 0.4 * Ly + Ly / 5:
+            values[0] = 1e1
+        else:
+            values[0] = 1e3
+
+
+k = interpolate(k_expression(), dG0)
 mu = Constant(1.0)
 rho = Constant(0.0)
 g = Constant((0.0, 0.0))
@@ -56,7 +68,6 @@ h_well = Constant(Lx / nx)
 bcs = []
 
 # Source term
-dG0 = FunctionSpace(mesh, 'DG', 0)
 f = Function(dG0)
 f_cut = 1
 f.interpolate(
@@ -82,7 +93,7 @@ has_mesh_characteristic_length = False
 delta_0 = Constant(1)
 delta_1 = Constant(-1 / 2)
 delta_2 = Constant(1 / 2)
-delta_3 = Constant(1 / 2)
+delta_3 = Constant(0)
 eta_p = Constant(100)
 eta_u = Constant(100)
 h_avg = (h('+') + h('-')) / 2.
@@ -126,8 +137,11 @@ solver_parameters = {
 
 solve(lhs(F) == rhs(F), solution, bcs=bcs, solver_parameters=solver_parameters)
 sigma_h, u_h = solution.split()
+flux_h = Function(W.sub(0), name='Mass flux')
+flux_h.project(k / mu * sigma_h)
 sigma_h.rename('Velocity', 'label')
 u_h.rename('Pressure', 'label')
+k.rename('Permeability', 'label')
 
 plot(u_h)
 plt.axis('off')
@@ -137,5 +151,13 @@ plot(sigma_h)
 plt.axis('off')
 plt.show()
 
+plot(flux_h)
+plt.axis('off')
+plt.show()
+
+plot(k)
+plt.axis('off')
+plt.show()
+
 output = File(resultsdir + 'flow.pvd', project_output=True)
-output.write(sigma_h, u_h)
+output.write(sigma_h, u_h, flux_h, k)
