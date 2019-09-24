@@ -56,14 +56,18 @@ h_well = Constant(1.2 * Lx / nx)
 bcs = []
 
 # Source term
+dG0 = FunctionSpace(mesh, 'DG', 0)
+f = Function(dG0)
 f_cut = 1
-f = conditional(
-    And(x <= f_cut * h_well, y <= f_cut * h_well),
-    Constant(1.),
+f.interpolate(
     conditional(
-        And(Lx - x <= f_cut * h_well, Ly - y <= f_cut * h_well),
-        Constant(-1.),
-        Constant(0.0)
+        And(x <= f_cut * h_well, y <= f_cut * h_well),
+        Constant(1.),
+        conditional(
+            And(Lx - x <= f_cut * h_well, Ly - y <= f_cut * h_well),
+            Constant(-1.),
+            Constant(0.0)
+        )
     )
 )
 
