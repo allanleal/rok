@@ -41,7 +41,7 @@ g = Constant((0.0, 0.0))
 
 # Boundary conditions
 h_well = Constant(Lx / nx)
-# The following strong conditions could be used with caution
+# The following strong conditions could be used with caution. TODO: Actually it should be fixed.
 # v_top = conditional(And(Lx - x <= h_well, x <= Lx), as_vector([0, 1]), as_vector([0, 0]))
 # v_bottom = conditional(And(x <= h_well, x > 0), as_vector([0, 1]), as_vector([0, 0]))
 # v_left = conditional(And(y <= h_well, y > 0), as_vector([1, 0]), as_vector([0, 0]))
