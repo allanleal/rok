@@ -14,7 +14,7 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     mesh = function_space.mesh()
     dim = mesh.geometric_dimension()
 
-    model = TPLStable(dim=dim, var=var, len_scale=len_scale, len_low=len_low)
+    model = Exponential(dim=dim, var=var, len_scale=len_scale)
 
     srf = SRF(model, seed=seed)
 
