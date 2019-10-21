@@ -1,5 +1,5 @@
 import firedrake as fire
-from gstools import SRF, Gaussian, TPLStable
+from gstools import SRF, Gaussian, TPLStable, Exponential
 from scipy.interpolate import RegularGridInterpolator
 import numpy as np
 
@@ -14,7 +14,8 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     mesh = function_space.mesh()
     dim = mesh.geometric_dimension()
 
-    model = Exponential(dim=dim, var=var, len_scale=len_scale)
+    model = TPLStable(dim=dim, var=var, len_scale=len_scale, len_low=len_low)
+    # model = Exponential(dim=dim, var=var, len_scale=len_scale)  # FIXME: Diego, the exponential model, instead of TPLStable, resulted in some chemical equilibrium errors (returning to previous at the moment)
 
     srf = SRF(model, seed=seed)
 
