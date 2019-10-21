@@ -14,30 +14,30 @@ year = 365 * day
 pi = 3.14159265359
 
 # Parameters for the reactive transport simulation
-nx = 100                # the number of mesh cells along the x-axis
-ny = 100                # the number of mesh cells along the y-axis
+nx = 100               # the number of mesh cells along the x-axis
+ny = 100               # the number of mesh cells along the y-axis
 nz = 25                # the number of mesh cells along the y-axis
 Lx = 1.6               # the length of the mesh along the x-axis
 Ly = 1.0               # the length of the mesh along the y-axis
-nsteps = 1000          # the number of time steps
-cfl = 0.3              # the CFL number to be used in the calculation of time step
+nsteps = 100           # the number of time steps
+cfl = 0.5              # the CFL number to be used in the calculation of time step
 T  = 60.0 + 273.15     # the temperature (in units of K)
 P  = 1e5               # the pressure (in units of Pa)
-tend = 10*day          # the final time (in units of s)
+tend = 1*day           # the final time (in units of s)
 
-# method = 'cgls'
-# method = 'dgls'
-method = 'sdhm'
+# method_flow = 'cgls'
+# method_flow = 'dgls'
+method_flow = 'sdhm'
+
+method_transport = 'supg'
 
 # The path to where the result files are output
-resultsdir = 'results/demo-reactiveflow/{}/'.format(method)
+resultsdir = f'results/demo-reactiveflow/mesh-{nx}x{ny}-cfl-{cfl}-flow-{method_flow}-transport-{method_transport}/'
 
 # Initialise the mesh
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
 
 V = rok.FunctionSpace(mesh, "CG", 1)
-K_space = rok.FunctionSpace(mesh, "DG", 0)
-V_transport = rok.FunctionSpace(mesh, "CG", 1)
 
 x, y = rok.SpatialCoordinate(mesh)
 
@@ -93,7 +93,7 @@ state_ic.scalePhaseVolume('Calcite', 0.018, 'm3')
 state_bc.scaleVolume(1.0)
 
 # Initialise the chemical field
-field = rok.ChemicalField(system, V_transport)
+field = rok.ChemicalField(system, V)
 field.fill(state_ic)
 field.update()
 
@@ -108,12 +108,12 @@ problem.addPressureBC(1e5, 'right')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
 problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
 
-flow = rok.DarcySolver(problem, method=method)
+flow = rok.DarcySolver(problem, method=method_flow)
 
 rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)
 
 # Initialize the chemical transport solver
-transport = rok.ChemicalTransportSolver(field)
+transport = rok.ChemicalTransportSolver(field, method=method_transport)
 transport.addBoundaryCondition(state_bc, 1)  # 1 means left side in a rectangular mesh
 transport.setVelocity([flow.u])
 transport.setDiffusion([D])
@@ -158,12 +158,11 @@ print('dt = {} minute'.format(dt/minute))
 
 start_time = time.time()
 
-while t <= tend:
-    # print('Time: {:<5.2f} day ({}/{})'.format(t/day, step, nsteps))
-    elapsed_time = (time.time() - start_time)/minute
+while t < tend and step < nsteps:
+    elapsed_time = (time.time() - start_time)/hour
     final_time = elapsed_time*(tend/t - 1) if t != 0.0 else 0.0
 
-    print('Progress at step {}: {:.2f} day ({:.2f}% of {:.2f} days), elapsed time is {:.2f} minutes (estimated to end in {:.2f} minutes)'.format(step, t/day, t/tend*100, tend/day, elapsed_time, final_time))
+    print('Progress at step {}: {:.2f} hour ({:.2f}% of {:.2f} days), elapsed time is {:.2f} hour (estimated to end in {:.2f} hours)'.format(step, t/hour, t/tend*100, tend/day, elapsed_time, final_time))
 
     if step % 10 == 0:
         # For each selected species, output its molar amounts
@@ -186,7 +185,6 @@ while t <= tend:
     # rho.assign(field.densities()[0])
 
     # Update the current time
-    dt = dt if t + dt <= tend else tend - t
     t += dt
     step += 1
 
