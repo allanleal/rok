@@ -1,6 +1,8 @@
 import firedrake as fire
 import rok
 
+method = 'supg'
+
 nx = 25  # the number of mesh cells along the x-coordinate
 ny = 25  # the number of mesh cells along the y-coordinate
 
@@ -14,14 +16,21 @@ dt = 2.0e5                             # the time step (in units of s)
 # Initialise the mesh
 mesh = fire.UnitSquareMesh(nx, ny, quadrilateral=True)
 
-V = fire.FunctionSpace(mesh, 'CG', 1)
+if method == 'supg':
+    finite_element_space = 'CG'
+elif method == 'dg':
+    finite_element_space = 'DG'
+else:
+    raise ValueError(f'Method {method} is unavailable.')
+
+V = fire.FunctionSpace(mesh, finite_element_space, 1)
 
 bc = fire.DirichletBC(V, fire.Constant(1.0), 1)
 
 u = fire.Function(V)
 
 # Initialize the transport solver
-transport = rok.TransportSolver()
+transport = rok.TransportSolver(method=method)
 transport.setVelocity(v)
 transport.setDiffusion(D)
 transport.setSource(q)
@@ -30,7 +39,7 @@ transport.setBoundaryConditions([bc])
 t = 0.0
 step = 0
 
-outfile = fire.File("u.pvd")
+outfile = fire.File("results_demo-transport/u.pvd")
 outfile.write(u)
 
 while step < nsteps:

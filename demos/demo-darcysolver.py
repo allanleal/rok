@@ -22,7 +22,7 @@ problem.addVelocityComponentBC(0.0, 'y', 'top')
 solver = rok.DarcySolver(problem, method='sdhm')
 solver.solve()
 
-file = rok.File('demo-darcysolver.pvd')
+file = rok.File('results/demo-darcysolver/up.pvd')
 
 file.write(solver.u, solver.p)
 

@@ -1,3 +1,6 @@
+# Conda files
+environment.yml
+
 # Visual Studio Code
 .vscode
 
@@ -13,3 +16,6 @@ __pycache__/
 firedrake-install
 firedrake
 firedrake-install.log
+
+# Other files
+results/

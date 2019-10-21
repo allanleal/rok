@@ -1,6 +1,6 @@
 import firedrake as fire
 from firedrake import dot, div, grad, inner, curl, dx, ds, dS, jump, avg
-from .utils import boundaryNameToIndex, vectorComponentNameToIndex
+from .utils import boundaryNameToIndex, vectorComponentNameToIndex, DirichletExpressionBC
 
 
 class DarcyProblem:
@@ -32,10 +32,14 @@ class DarcyProblem:
     def addPressureBC(self, value, onboundary):
         self.bcs_p.append((value, boundaryNameToIndex(onboundary)))
 
-    def addVelocityBC(self, value, onboundary):
-        self.bcs_u.append((value, boundaryNameToIndex(onboundary), None))
+    def addVelocityBC(self, vecvalue, onboundary):
+        if type(vecvalue) in [list, tuple]:
+            vecvalue = fire.Constant(vecvalue)
+        self.bcs_u.append((vecvalue, boundaryNameToIndex(onboundary), None))
 
     def addVelocityComponentBC(self, value, component, onboundary):
+        if type(value) in [float, int]:
+            value = fire.Constant(value)
         self.bcs_u.append((value, boundaryNameToIndex(onboundary), vectorComponentNameToIndex(component)))
 
 
@@ -43,6 +47,7 @@ class DarcySolver:
 
     def __init__(self, problem, u_degree=1, p_degree=1, lambda_degree=1, method='cgls'):
         self.problem = problem
+        self.method = method
         mesh = problem.mesh
         bcs_p = problem.bcs_p
         bcs_u = problem.bcs_u
@@ -109,14 +114,15 @@ class DarcySolver:
             self.solver = fire.NonlinearVariationalSolver(nvp, solver_parameters=self.solver_parameters)
         else:
             self.bcs = []
+            rho = self.problem.rho
             for uboundary, iboundary, component in bcs_u:
                 if component is not None:
                     self.bcs.append(
-                        fire.DirichletBC(self._W.sub(0).sub(component), uboundary, iboundary, method=dirichlet_method)
+                        DirichletExpressionBC(self._W.sub(0).sub(component), rho*uboundary, iboundary, method=dirichlet_method)
                     )
                 else:
                     self.bcs.append(
-                        fire.DirichletBC(self._W.sub(0), uboundary, iboundary, method=dirichlet_method)
+                        DirichletExpressionBC(self._W.sub(0), rho*uboundary, iboundary, method=dirichlet_method)
                     )
 
             # self.solver_parameters = {
@@ -152,9 +158,9 @@ class DarcySolver:
 
         # Stabilizing parameters
         h = fire.CellDiameter(mesh)
-        has_mesh_characteristic_length = False
-        delta_0 = fire.Constant(-1)
-        delta_1 = fire.Constant(1 / 2)
+        has_mesh_characteristic_length = True
+        delta_0 = fire.Constant(1)
+        delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
         delta_3 = fire.Constant(1 / 2)
 
@@ -222,13 +228,13 @@ class DarcySolver:
         h = fire.CellDiameter(mesh)
 
         # Stabilizing parameters
-        has_mesh_characteristic_length = False
+        has_mesh_characteristic_length = True
         delta_0 = fire.Constant(1)
         delta_1 = fire.Constant(-1 / 2)
         delta_2 = fire.Constant(1 / 2)
         delta_3 = fire.Constant(1 / 2)
         eta_p = fire.Constant(100)
-        eta_q = fire.Constant(10)
+        eta_q = fire.Constant(100)
         h_avg = (h('+') + h('-')) / 2.
         if has_mesh_characteristic_length:
             delta_2 = delta_2 * h * h
@@ -275,11 +281,11 @@ class DarcySolver:
 
         # Stabilizing parameters
         has_mesh_characteristic_length = True
-        beta_0 = fire.Constant(1e-12)
-        delta_0 = fire.Constant(1)
-        delta_1 = fire.Constant(-1 / 2)
-        delta_2 = fire.Constant(1 / 2)
-        delta_3 = fire.Constant(1 / 2)
+        beta_0 = fire.Constant(1e-15)
+        delta_0 = fire.Constant(-1)
+        delta_1 = fire.Constant(1 / 2)
+        delta_2 = fire.Constant(0)
+        delta_3 = fire.Constant(0)
 
         # h_avg = (h('+') + h('-')) / 2.
         beta = beta_0 / h
@@ -333,7 +339,11 @@ class DarcySolver:
         return a, L
 
     def solve(self):
+        if not self.method == 'sdhm':  # TODO: temporary fix. It has to be improved.
+            for bc in self.bcs:
+                bc.update()
         self.solver.solve()
         self.p.assign(self.solution.sub(1))
         self.u.assign(self.solution.sub(0))
-        self.u /= self.problem.rho
+        for i in range(self.u.dat.data.shape[1]):
+            self.u.dat.data[:, i] /= self.problem.rho.dat.data
