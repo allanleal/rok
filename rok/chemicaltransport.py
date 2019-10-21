@@ -12,7 +12,7 @@ class ChemicalDirichletBC:
         self.state = state.clone()
         self.values = fire.Function(function_space)
         self.dofs = function_space.boundary_nodes(boundary, "topological")
-        self.dirichlet = fire.DirichletBC(function_space, self.values, boundary)
+        self.dirichlet = fire.DirichletBC(function_space, self.values, boundary, method="topological")
 
 
     def elementDirichletBC(self, ielement, ispecies, porosity):
@@ -75,7 +75,8 @@ class ChemicalTransportResult(object):
 
 class ChemicalTransportSolver(object):
 
-    def __init__(self, field):
+    def __init__(self, field, method='supg'):
+        self.method = method
         self.system = field.system()
         self.partition = field.partition()
         self.num_species  = self.system.numSpecies()
@@ -236,7 +237,7 @@ class ChemicalTransportSolver(object):
             for i in range(self.num_fluid_phases)]
 
         # Create transport solvers for each fluid phase
-        self.transport = [TransportSolver() for i in range(self.num_fluid_phases)]
+        self.transport = [TransportSolver(method=self.method) for i in range(self.num_fluid_phases)]
 
         # Set the pore velocities and diffusion coefficients for each transport solver
         for i in range(self.num_fluid_phases):
