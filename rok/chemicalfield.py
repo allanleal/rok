@@ -62,8 +62,10 @@ class _ChemicalField(object):
 
 
     def fill(self, state):
+        properties = state.properties()
         for k in range(self.num_dofs):
             self.states[k].assign(state)
+            self.properties[k].assign(properties)
 
 
     def setTemperatures(self, temperatures):
@@ -78,10 +80,6 @@ class _ChemicalField(object):
 
     def update(self):
         for k in range(self.num_dofs):
-            Tk = self.states[k].temperature()
-            Pk = self.states[k].pressure()
-            nk = self.states[k].speciesAmounts()
-            self.properties[k].update(Tk, Pk, nk)
             v = self.properties[k].phaseVolumes().val
             m = self.properties[k].phaseMasses().val
             volume_fluid = sum([v[i] for i in self.iphases_fluid])
@@ -182,6 +180,10 @@ class ChemicalField(object):
 
     def states(self):
         return self.pimpl.states
+
+
+    def properties(self):
+        return self.pimpl.properties
 
 
     def system(self):
