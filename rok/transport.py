@@ -2,8 +2,7 @@ from firedrake import *
 
 
 class _TransportSolver(object):
-
-    def __init__(self, method='supg'):
+    def __init__(self, method="supg"):
         # Initialize default values for the velocity, diffusion and source parameters
         self.velocity = Constant(0.0)
         self.diffusion = Constant(0.0)
@@ -32,7 +31,7 @@ class _TransportSolver(object):
         self.initialized = False
 
     def setBoundaryConditions(self, bcs):
-        self.bcs = bcs if hasattr(bcs, '__len__') else [bcs]
+        self.bcs = bcs if hasattr(bcs, "__len__") else [bcs]
 
     def initialize(self, function_space):
         self.initialized = True
@@ -40,14 +39,16 @@ class _TransportSolver(object):
         V = function_space
         self.u = Function(V)
 
-        if self.method == 'supg':
+        if self.method == "supg":
             self.a, self.L = self._supg_form(V)
-        elif self.method == 'dg':
+        elif self.method == "dg":
             self.a, self.L = self._primal_dg_advection(V)
             self.limiter = VertexBasedLimiter(V)  # Kuzmin slope limiter
             # self.a, self.L = self._improved_dg_advection(V)  # Work in progress (don't use it)
         else:
-            raise ValueError(f'Invalid method for transport problem. Method provided {self.method} is not available.')
+            raise ValueError(
+                f"Invalid method for transport problem. Method provided {self.method} is not available."
+            )
 
         self.problem = LinearVariationalProblem(self.a, self.L, self.u, bcs=self.bcs)
         self.solver = LinearVariationalSolver(self.problem)
@@ -68,11 +69,12 @@ class _TransportSolver(object):
         v = TestFunction(V)
 
         # Semi-discrete residual
-        r = (div(velocity * u) - div(diffusion * grad(u)) - source)
+        r = div(velocity * u) - div(diffusion * grad(u)) - source
 
         # Galerkin variational problem
-        F = v * (u - u0) * dx + dt * (v * div(velocity * u) * dx + \
-                                      dot(grad(v), diffusion * grad(u)) * dx - source * v * dx)
+        F = v * (u - u0) * dx + dt * (
+            v * div(velocity * u) * dx + dot(grad(v), diffusion * grad(u)) * dx - source * v * dx
+        )
 
         # Add SUPG stabilisation terms
         h_k = sqrt(2) * CellVolume(mesh) / CellDiameter(mesh)
@@ -112,10 +114,14 @@ class _TransportSolver(object):
         # Nonsymmetric Interior Penalty Galerkin (NIPG), proposed by Riviere, Wheeler and Girault (1999)
         def a(u, v):
             a_int = dot(grad(v), diffusion * grad(u) - velocity * u) * dx
-            a_velocity = dot(jump(v), un('+') * u('+') - un('-') * u('-')) * dS + dot(v, un * u) * ds
-            a_facets = diffusion('+') * (alpha / h('+')) * dot(jump(u, n), jump(v, n)) * dS \
-                       - dot(avg(diffusion * grad(u)), jump(v, n)) * dS \
-                       + dot(jump(u, n), avg(diffusion * grad(v))) * dS
+            a_velocity = (
+                dot(jump(v), un("+") * u("+") - un("-") * u("-")) * dS + dot(v, un * u) * ds
+            )
+            a_facets = (
+                diffusion("+") * (alpha / h("+")) * dot(jump(u, n), jump(v, n)) * dS
+                - dot(avg(diffusion * grad(u)), jump(v, n)) * dS
+                + dot(jump(u, n), avg(diffusion * grad(v))) * dS
+            )
             a = a_int + a_facets + a_velocity
             return a
 
@@ -123,7 +129,12 @@ class _TransportSolver(object):
         a0 = a(u0, v)
         a1 = a(u, v)
 
-        A = (1 / dt) * inner(u, v) * dx - (1 / dt) * inner(u0, v) * dx + theta * a1 + (1 - theta) * a0
+        A = (
+            (1 / dt) * inner(u, v) * dx
+            - (1 / dt) * inner(u0, v) * dx
+            + theta * a1
+            + (1 - theta) * a0
+        )
         L_rhs = dt * source * v * dx
         F = A - L_rhs
 
@@ -136,13 +147,13 @@ class _TransportSolver(object):
         self.u0.assign(u)
         self.u.assign(u)
         self.solver.solve()
-        if self.method == 'dg':
+        if self.method == "dg":
             self.limiter.apply(self.u)
         u.assign(self.u)
 
 
 class TransportSolver(object):
-    def __init__(self, method='supg'):
+    def __init__(self, method="supg"):
         self.pimpl = _TransportSolver(method=method)
 
     def setVelocity(self, velocity):

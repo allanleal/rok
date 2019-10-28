@@ -12,26 +12,24 @@ class ChemicalDirichletBC:
         self.state = state.clone()
         self.values = fire.Function(function_space)
         self.dofs = function_space.boundary_nodes(boundary, "topological")
-        self.dirichlet = fire.DirichletBC(function_space, self.values, boundary, method="topological")
-
+        self.dirichlet = fire.DirichletBC(
+            function_space, self.values, boundary, method="topological"
+        )
 
     def elementDirichletBC(self, ielement, ispecies, porosity):
         bval = self.state.elementAmountInSpecies(ielement, ispecies)
         phi = porosity.dat.data[self.dofs]
-        self.values.dat.data[self.dofs] = phi*bval
+        self.values.dat.data[self.dofs] = phi * bval
         return self.dirichlet
-
 
     def speciesDirichletBC(self, ispecies, porosity):
         nval = self.state.speciesAmount(ispecies)
         phi = porosity.dat.data[self.dofs]
-        self.values.dat.data[self.dofs] = phi*nval
+        self.values.dat.data[self.dofs] = phi * nval
         return self.dirichlet
 
 
 class ChemicalTransportResult(object):
-
-
     class EquilibriumResult(object):
         def __init__(self):
             # The number of iterations for equilibrium calculations performed at every degree of freedom
@@ -40,7 +38,6 @@ class ChemicalTransportResult(object):
             # The elapsed seconds for equilibrium calculations performed at every degree of freedom
             self.seconds = []
 
-
     class KineticsResult(object):
         def __init__(self):
             # The number of time-steps for kinetic calculations performed at every degree of freedom
@@ -48,7 +45,6 @@ class ChemicalTransportResult(object):
 
             # The elapsed seconds for kinetic calculations performed at every degree of freedom
             self.seconds = []
-
 
     def __init__(self):
         # The flag that indicates if the chemical transport calculations succeeded
@@ -74,12 +70,11 @@ class ChemicalTransportResult(object):
 
 
 class ChemicalTransportSolver(object):
-
-    def __init__(self, field, method='supg'):
+    def __init__(self, field, method="supg"):
         self.method = method
         self.system = field.system()
         self.partition = field.partition()
-        self.num_species  = self.system.numSpecies()
+        self.num_species = self.system.numSpecies()
         self.num_elements = self.system.numElements()
         self.num_fluid_phases = len(self.partition.indicesFluidPhases())
         self.num_solid_phases = len(self.partition.indicesSolidPhases())
@@ -107,66 +102,68 @@ class ChemicalTransportSolver(object):
         self.result.kinetics._timesteps = np.empty(self.num_dofs)
         self.result.kinetics._seconds = np.empty(self.num_dofs)
 
-        self.result.equilibrium.iterations.rename('EquilibriumIterationsPerDOF', 'EquilibriumIterationsPerDOF')
-        self.result.equilibrium.seconds.rename('EquilibriumSecondsPerDOF', 'EquilibriumSecondsPerDOF')
-        self.result.kinetics.timesteps.rename('KineticsTimeStepsPerDOF', 'KineticsTimeStepsPerDOF')
-        self.result.kinetics.seconds.rename('KineticsSecondsPerDOF', 'KineticsSecondsPerDOF')
-
+        self.result.equilibrium.iterations.rename(
+            "EquilibriumIterationsPerDOF", "EquilibriumIterationsPerDOF"
+        )
+        self.result.equilibrium.seconds.rename(
+            "EquilibriumSecondsPerDOF", "EquilibriumSecondsPerDOF"
+        )
+        self.result.kinetics.timesteps.rename("KineticsTimeStepsPerDOF", "KineticsTimeStepsPerDOF")
+        self.result.kinetics.seconds.rename("KineticsSecondsPerDOF", "KineticsSecondsPerDOF")
 
     def setVelocity(self, velocity):
-        assert type(velocity) is list, \
-            'Expecting a list of velocity fields for each fluid phase.'
-        assert len(velocity) == self.num_fluid_phases, \
-            'There are %d fluid phases, but only %d velocity fields were given.' \
-                % (self.num_fluid_phases, len(velocity))
+        assert type(velocity) is list, "Expecting a list of velocity fields for each fluid phase."
+        assert len(velocity) == self.num_fluid_phases, (
+            "There are %d fluid phases, but only %d velocity fields were given."
+            % (self.num_fluid_phases, len(velocity))
+        )
         self.velocity = velocity
         self.initialized = False
 
-
     def setDiffusion(self, diffusion):
-        assert type(diffusion) is list, \
-            'Expecting a list of diffusion coefficients for each fluid phase.'
-        assert len(diffusion) == self.num_fluid_phases, \
-            'There are %d fluid phases, but only %d diffusion coefficients were given.' \
-                % (self.num_fluid_phases, len(diffusion))
+        assert (
+            type(diffusion) is list
+        ), "Expecting a list of diffusion coefficients for each fluid phase."
+        assert len(diffusion) == self.num_fluid_phases, (
+            "There are %d fluid phases, but only %d diffusion coefficients were given."
+            % (self.num_fluid_phases, len(diffusion))
+        )
         self.diffusion = diffusion
         self.initialized = False
-
 
     def setSource(self, source):
         self.source = source
         self.initialized = False
 
-
     def setPartition(self, partition):
         self.partition = partition
-
 
     def addBoundaryCondition(self, state, boundary):
         self.boundary_conditions.append((state, boundary))
 
-
     def setTemperatures(self, temperatures):
         if type(temperatures) in [int, float]:
-            temperatures = [temperatures]*self.num_dofs
-        assert hasattr(temperatures, '__len__'), 'Expecting a list of temperatures.'
-        assert len(temperatures) == self.num_dofs, 'Expecting a list of \
-            temperatures of length %d, but given list has length %d.' \
-                % (self.num_dofs, len(temperatures))
+            temperatures = [temperatures] * self.num_dofs
+        assert hasattr(temperatures, "__len__"), "Expecting a list of temperatures."
+        assert len(temperatures) == self.num_dofs, (
+            "Expecting a list of \
+            temperatures of length %d, but given list has length %d."
+            % (self.num_dofs, len(temperatures))
+        )
         for i in range(self.num_dofs):
             self.states[i].setTemperature(temperatures[i])
 
-
     def setPressures(self, pressures):
         if type(pressures) in [int, float]:
-            pressures = [pressures]*self.num_dofs
-        assert hasattr(pressures, '__len__'), 'Expecting a list of pressures.'
-        assert len(pressures) == self.num_dofs, 'Expecting a list of \
-            pressures of length %d, but given list has length %d.' \
-                % (self.num_dofs, len(pressures))
+            pressures = [pressures] * self.num_dofs
+        assert hasattr(pressures, "__len__"), "Expecting a list of pressures."
+        assert len(pressures) == self.num_dofs, (
+            "Expecting a list of \
+            pressures of length %d, but given list has length %d."
+            % (self.num_dofs, len(pressures))
+        )
         for i in range(self.num_dofs):
             self.states[i].setPressure(pressures[i])
-
 
     def initialize(self, field):
 
@@ -174,12 +171,16 @@ class ChemicalTransportSolver(object):
 
         # Check if the user provided any boundary conditions
         if self.boundary_conditions is []:
-            RuntimeError('Failed to initialize ChemicalTransportSolver. \
-                No boundary conditions have been provided.')
+            RuntimeError(
+                "Failed to initialize ChemicalTransportSolver. \
+                No boundary conditions have been provided."
+            )
 
         # Initialize the ChemicalDirichletBC instances
-        self.bcs = [ChemicalDirichletBC(self.function_space, state, boundary) \
-                    for (state, boundary) in self.boundary_conditions]
+        self.bcs = [
+            ChemicalDirichletBC(self.function_space, state, boundary)
+            for (state, boundary) in self.boundary_conditions
+        ]
 
         # The auxiliary Function instance used for transport steps
         self.u = fire.Function(self.function_space)
@@ -192,12 +193,12 @@ class ChemicalTransportSolver(object):
         self.equilibrium.setPartition(self.partition)
 
         # Initialize the indices of the equilibrium and kinetic species
-        self.ispecies_e  = self.partition.indicesEquilibriumSpecies()
-        self.ispecies_k  = self.partition.indicesKineticSpecies()
+        self.ispecies_e = self.partition.indicesEquilibriumSpecies()
+        self.ispecies_k = self.partition.indicesKineticSpecies()
 
         # Initialize the indices of the fluid and solid species
-        self.ispecies_f  = self.partition.indicesFluidSpecies()
-        self.ispecies_s  = self.partition.indicesSolidSpecies()
+        self.ispecies_f = self.partition.indicesFluidSpecies()
+        self.ispecies_s = self.partition.indicesSolidSpecies()
 
         # Initialize the indices of the equilibrium-fluid and equilibrium-solid species
         # self.ispecies_ef = [sorted(set(self.ispecies_e) & set(indices)) for indices in self.ispecies_f]
@@ -219,8 +220,9 @@ class ChemicalTransportSolver(object):
 
         # Initialize the arrays of element amounts for each fluid phase in
         # the equilibrium-fluid partition for each degree-of-freedom in the function space
-        self.bef = [np.zeros((self.num_elements, self.num_dofs))
-            for i in range(self.num_fluid_phases)]
+        self.bef = [
+            np.zeros((self.num_elements, self.num_dofs)) for i in range(self.num_fluid_phases)
+        ]
 
         # Initialize the array of element amounts in the equilibrium
         # partition for each degree-of-freedom in the function space
@@ -233,8 +235,10 @@ class ChemicalTransportSolver(object):
         self.porosity = field.porosity()
 
         # Define the dolfin forms for the pore velocity of each fluid phase
-        self.pore_velocity = [self.velocity[i]/(self.porosity*self.saturations[i]) \
-            for i in range(self.num_fluid_phases)]
+        self.pore_velocity = [
+            self.velocity[i] / (self.porosity * self.saturations[i])
+            for i in range(self.num_fluid_phases)
+        ]
 
         # Create transport solvers for each fluid phase
         self.transport = [TransportSolver(method=self.method) for i in range(self.num_fluid_phases)]
@@ -251,15 +255,12 @@ class ChemicalTransportSolver(object):
         for i in range(self.num_fluid_phases):
             field.elementAmountsInSpecies(self.ispecies_ef[i], self.bef[i])
 
-
     def elementDirichletBC(self, ielement, iphase):
-        ispecies = self.ispecies_ef[iphase] # the indices of equilibrium species in phase `iphase`
+        ispecies = self.ispecies_ef[iphase]  # the indices of equilibrium species in phase `iphase`
         return [bc.elementDirichletBC(ielement, ispecies, self.porosity) for bc in self.bcs]
-
 
     def speciesDirichletBC(self, ispecies):
         return [bc.speciesDirichletBC(ispecies, self.porosity) for bc in self.bcs]
-
 
     def transportEquilibriumElementsInFluidPhases(self, field, dt):
         # Iterate over all elements in all fluid phases in the equilibrium-fluid
@@ -283,10 +284,8 @@ class ChemicalTransportSolver(object):
                 # Extract the result to the array of element amounts `bef`
                 self.bef[iphase][ielement][:] = self.u.vector().get_local()
 
-
     def transportKineticSpeciesInFluidPhases(self, field, dt):
         pass
-
 
     def equilibrate(self, field):
 
@@ -311,10 +310,10 @@ class ChemicalTransportSolver(object):
             self.be += bef
 
         # options = rkt.EquilibriumOptions()
-#         options.epsilon = 1e-30
-#         options.hessian = EquilibriumHessian.Exact
-#         options.optimum.tolerance = 1e-8
-#         options.optimum.output.active = True
+        #         options.epsilon = 1e-30
+        #         options.hessian = EquilibriumHessian.Exact
+        #         options.optimum.tolerance = 1e-8
+        #         options.optimum.output.active = True
 
         # self.equilibrium.setOptions(options)
 
@@ -330,10 +329,15 @@ class ChemicalTransportSolver(object):
 
             # Check if the equilibrium calculation was successful
             if not result.optimum.succeeded:
-                b = [(elem.name(), amount) for elem, amount in zip(self.system.elements(), self.be[:, k])]
-                raise RuntimeError("Failed to calculate equilibrium state at dof (%d), under " \
-                "temperature %f K, pressure %f Pa, and element molar amounts %s." % \
-                (k, states[k].temperature(), states[k].pressure(), str(b)))
+                b = [
+                    (elem.name(), amount)
+                    for elem, amount in zip(self.system.elements(), self.be[:, k])
+                ]
+                raise RuntimeError(
+                    "Failed to calculate equilibrium state at dof (%d), under "
+                    "temperature %f K, pressure %f Pa, and element molar amounts %s."
+                    % (k, states[k].temperature(), states[k].pressure(), str(b))
+                )
 
             # Store the statistics of the equilibrium calculation
             iterations[k] = result.optimum.iterations
@@ -351,10 +355,8 @@ class ChemicalTransportSolver(object):
         # Total time spent on performing equilibrium calculations
         self.result.seconds_equilibrium = timer.time() - tbegin
 
-
     def react(self, field, dt):
         pass
-
 
     def step(self, field, dt):
         # Check if the chemical transport solver has been initialized
@@ -381,7 +383,6 @@ class ChemicalTransportSolver(object):
 
         # Compute the time elapsed for the chemical transport step
         self.result.time = timer.time() - tbegin
-
 
     def elementAmountInPhase(self, element, phase):
         ielement = self.system.indexElement(element)

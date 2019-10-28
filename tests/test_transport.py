@@ -8,10 +8,10 @@ def test_transport_step(num_regression):
     nx, ny = 5, 5  # number of cells along x and y
     nsteps = 10  # number of time steps
 
-    velocity  = fire.Constant([1.0e-2, 0.0])
+    velocity = fire.Constant([1.0e-2, 0.0])
     diffusion = fire.Constant(1.0e-3)
-    source    = fire.Constant(0.0)
-    dt        = 1.0
+    source = fire.Constant(0.0)
+    dt = 1.0
 
     mesh = fire.UnitSquareMesh(nx, ny, quadrilateral=True)
 
@@ -37,6 +37,6 @@ def test_transport_step(num_regression):
         step += 1
         data.append(u.dat.data)
 
-    data = { "u(step={})".format(i) : u for i, u in enumerate(data) }
+    data = {"u(step={})".format(i): u for i, u in enumerate(data)}
 
     num_regression.check(data)

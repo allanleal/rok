@@ -7,10 +7,14 @@ import numpy as np
 def rescale_field(x_input, x_new_min, x_new_max):
     x_min_input = x_input.min()
     x_max_input = x_input.max()
-    return (x_input - x_min_input) / (x_max_input - x_min_input) * (x_new_max - x_new_min) + x_new_min
+    return (x_input - x_min_input) / (x_max_input - x_min_input) * (
+        x_new_max - x_new_min
+    ) + x_new_min
 
 
-def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale=10, len_low=0, seed=20170519):
+def permeability(
+    function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale=10, len_low=0, seed=20170519
+):
     mesh = function_space.mesh()
     dim = mesh.geometric_dimension()
 
@@ -20,11 +24,11 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     srf = SRF(model, seed=seed)
 
     ndofs = function_space.dim()
-    size = int(ndofs**(1/dim))
+    size = int(ndofs ** (1 / dim))
 
     xyz = [range(size) for _ in range(dim)]
 
-    data = srf(xyz, mesh_type='structured')
+    data = srf(xyz, mesh_type="structured")
 
     # The min and max values of x,y,z in the mesh
     xyz_min = [mesh.coordinates.dat.data[:, i].min() for i in range(dim)]
@@ -41,7 +45,7 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     X = fire.interpolate(mesh.coordinates, W)
 
     # Make an output function.
-    k = fire.Function(function_space, name='Permeability')
+    k = fire.Function(function_space, name="Permeability")
 
     # Use the external data function to interpolate the values of f.
     kdata = np.array([datainterp(xyz) for xyz in X.dat.data_ro])
@@ -50,4 +54,3 @@ def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale
     k.dat.data[:] = rescale_field(kdata, minval, maxval)[:, 0]
 
     return k
-
