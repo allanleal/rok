@@ -19,5 +19,5 @@ def porosity(
     )
 
 
-def rough_porosity(low_cut, high_cut, value_at_low_cut, value_at_high_cut):
+def rough_porosity(porosity_space, low_cut, high_cut, value_at_low_cut, value_at_high_cut):
     NotImplementedError("To be implemented.")
