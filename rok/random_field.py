@@ -13,7 +13,7 @@ def rescale_field(x_input, x_new_min, x_new_max):
 
 
 def random_field_generator(
-    function_space, minval=1, maxval=10, var=1e-2, len_scale=1, len_low=0, seed=20170519
+    function_space, minval=0, maxval=1, var=1e-2, len_scale=1, len_low=0, seed=20170519
 ):
     mesh = function_space.mesh()
     dim = mesh.geometric_dimension()
