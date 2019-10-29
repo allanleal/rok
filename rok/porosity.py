@@ -19,5 +19,28 @@ def porosity(
     )
 
 
-def rough_porosity(porosity_space, low_cut, high_cut, value_at_low_cut, value_at_high_cut):
-    NotImplementedError("To be implemented.")
+def rough_porosity(porosity_field, low_cut, high_cut, value_at_low_cut, value_at_high_cut):
+    new_porosity = fire.Function(porosity_field.function_space()).project(
+        _rough_porosity_function(
+            porosity_value=porosity_field,
+            low_cut=low_cut,
+            high_cut=high_cut,
+            value_at_low_cut=value_at_low_cut,
+            value_at_high_cut=value_at_high_cut,
+        )
+    )
+    return new_porosity
+
+
+def _rough_porosity_function(
+    porosity_value, low_cut, high_cut, value_at_low_cut, value_at_high_cut
+):
+    if porosity_value < low_cut:
+        return value_at_low_cut
+    elif porosity_value < high_cut:
+        mid_range_porosity = (porosity_value - low_cut) / (high_cut - low_cut)
+        return mid_range_porosity
+    elif high_cut <= porosity_value <= 1:
+        return value_at_high_cut
+    else:
+        return 1
