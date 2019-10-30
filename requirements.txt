@@ -3,3 +3,5 @@ pytest-regressions
 numpy
 pandas
 gstools
+pre-commit
+black

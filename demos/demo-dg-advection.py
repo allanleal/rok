@@ -13,7 +13,7 @@ mesh = UnitSquareMesh(40, 40, quadrilateral=run_as_quad_mesh)
 
 # Define function spaces
 V = FunctionSpace(mesh, "DG", 1)
-W = VectorFunctionSpace(mesh, 'CG', 2)
+W = VectorFunctionSpace(mesh, "CG", 2)
 x, y = SpatialCoordinate(mesh)
 
 velocity = as_vector((0.5 - y, x - 0.5))
@@ -26,7 +26,9 @@ v = TestFunction(V)
 u = TrialFunction(V)
 
 # Initial condition
-u0 = Function(V).interpolate(conditional(lt((x - 0.3)**2.0 + (y - 0.3)**2.0, 0.2 * 0.2), 1.0, 0.0))
+u0 = Function(V).interpolate(
+    conditional(lt((x - 0.3) ** 2.0 + (y - 0.3) ** 2.0, 0.2 * 0.2), 1.0, 0.0)
+)
 
 # STABILIZATION
 h = CellDiameter(mesh)
@@ -43,11 +45,13 @@ def a(u, v):
     # Bilinear form
     a_int = dot(grad(v), (1.0 / Pe) * grad(u) - b * u) * dx
 
-    a_fac = (1.0 / Pe) * (alpha / avg(h)) * dot(jump(u, n), jump(v, n)) * dS \
-            - (1.0 / Pe) * dot(avg(grad(u)), jump(v, n)) * dS \
-            - (1.0 / Pe) * dot(jump(u, n), avg(grad(v))) * dS
+    a_fac = (
+        (1.0 / Pe) * (alpha / avg(h)) * dot(jump(u, n), jump(v, n)) * dS
+        - (1.0 / Pe) * dot(avg(grad(u)), jump(v, n)) * dS
+        - (1.0 / Pe) * dot(jump(u, n), avg(grad(v))) * dS
+    )
 
-    a_vel = dot(jump(v), bn('+') * u('+') - bn('-') * u('-')) * dS + dot(v, bn * u) * ds
+    a_vel = dot(jump(v), bn("+") * u("+") - bn("-") * u("-")) * dS + dot(v, bn * u) * ds
 
     a = a_int + a_fac + a_vel
     return a

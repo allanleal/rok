@@ -26,17 +26,19 @@ maxkorder = 14
 minkorder = 11
 k.dat.data[:] = 10 ** np.random.randint(-maxkorder, -minkorder, size=len(k.dat.data)).astype(float)
 
-kappa = k/mu
+kappa = k / mu
 
-a = ( dot(u, w) - p*div(kappa*w) - v*div(rho*u) )*dx
-L = f*v*dx - dot(kappa*w*pL, n)*ds(1) - dot(kappa*w*pR, n)*ds(2)
+a = (dot(u, w) - p * div(kappa * w) - v * div(rho * u)) * dx
+L = f * v * dx - dot(kappa * w * pL, n) * ds(1) - dot(kappa * w * pR, n) * ds(2)
 
 w = Function(W)
 
-parameters = {"mat_type": "aij",
-              "ksp_type": "preonly",
-              "pc_type": "lu",
-              "pc_factor_mat_solver_type": "mumps"}
+parameters = {
+    "mat_type": "aij",
+    "ksp_type": "preonly",
+    "pc_type": "lu",
+    "pc_factor_mat_solver_type": "mumps",
+}
 solve(a == L, w, solver_parameters=parameters)
 
 u, p = w.split()

@@ -14,15 +14,15 @@ problem.setFluidDensity(rho)
 problem.setFluidViscosity(mu)
 problem.setRockPermeability(k)
 problem.setSourceRate(f)
-problem.addPressureBC(100e5, 'left')
-problem.addPressureBC(1e5, 'right')
-problem.addVelocityComponentBC(0.0, 'y', 'bottom')
-problem.addVelocityComponentBC(0.0, 'y', 'top')
+problem.addPressureBC(100e5, "left")
+problem.addPressureBC(1e5, "right")
+problem.addVelocityComponentBC(0.0, "y", "bottom")
+problem.addVelocityComponentBC(0.0, "y", "top")
 
-solver = rok.DarcySolver(problem, method='sdhm')
+solver = rok.DarcySolver(problem, method="sdhm")
 solver.solve()
 
-file = rok.File('results/demo-darcysolver/up.pvd')
+file = rok.File("results/demo-darcysolver/up.pvd")
 
 file.write(solver.u, solver.p)
 

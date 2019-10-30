@@ -3,8 +3,8 @@ import rok
 
 def test_DirichletExpressionBC():
     mesh = rok.UnitSquareMesh(500, 500, quadrilateral=True)
-    V = rok.VectorFunctionSpace(mesh, 'CG', 1)
-    U = rok.FunctionSpace(mesh, 'CG', 1)
+    V = rok.VectorFunctionSpace(mesh, "CG", 1)
+    U = rok.FunctionSpace(mesh, "CG", 1)
     x, y = rok.SpatialCoordinate(mesh)
 
     rho = rok.Function(U)

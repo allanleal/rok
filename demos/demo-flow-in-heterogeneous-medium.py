@@ -3,15 +3,15 @@ import rok
 import matplotlib.pyplot as plt
 
 # Parameters for the flow simulation
-method = 'sdhm'
-nx = 100          # the number of mesh cells along the x-axis
-ny = 100          # the number of mesh cells along the y-axis
-nz = 25           # the number of mesh cells along the y-axis
-Lx = 1.6          # the length of the mesh along the x-axis
-Ly = 1.0          # the length of the mesh along the y-axis
+method = "sdhm"
+nx = 100  # the number of mesh cells along the x-axis
+ny = 100  # the number of mesh cells along the y-axis
+nz = 25  # the number of mesh cells along the y-axis
+Lx = 1.6  # the length of the mesh along the x-axis
+Ly = 1.0  # the length of the mesh along the y-axis
 
 # The path to where the result files are output
-resultsdir = f'results/demo-flow-in-heterogeneous-medium/{method}/'
+resultsdir = f"results/demo-flow-in-heterogeneous-medium/{method}/"
 
 # Initialise the mesh
 mesh = rok.RectangleMesh(nx, ny, Lx, Ly, quadrilateral=True)
@@ -32,24 +32,24 @@ problem.setFluidDensity(rho)
 problem.setFluidViscosity(mu)
 problem.setRockPermeability(k)
 problem.setSourceRate(f)
-problem.addPressureBC(5e6, 'left')
-problem.addPressureBC(5e5, 'right')
-problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'bottom')
-problem.addVelocityComponentBC(rok.Constant(0.0), 'y', 'top')
+problem.addPressureBC(5e6, "left")
+problem.addPressureBC(5e5, "right")
+problem.addVelocityComponentBC(rok.Constant(0.0), "y", "bottom")
+problem.addVelocityComponentBC(rok.Constant(0.0), "y", "top")
 
 flow = rok.DarcySolver(problem, method=method)
 flow.solve()
 
-rok.File(resultsdir + 'flow.pvd').write(flow.u, flow.p, k)
+rok.File(resultsdir + "flow.pvd").write(flow.u, flow.p, k)
 
 rok.plot(k)
-plt.axis('off')
+plt.axis("off")
 plt.show()
 
 rok.plot(flow.u)
-plt.axis('off')
+plt.axis("off")
 plt.show()
 
 rok.plot(flow.p)
-plt.axis('off')
+plt.axis("off")
 plt.show()
