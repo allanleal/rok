@@ -19,28 +19,31 @@ def porosity(
     )
 
 
-def rough_porosity(porosity_field, low_cut, high_cut, value_at_low_cut, value_at_high_cut):
-    new_porosity = fire.Function(porosity_field.function_space()).project(
-        _rough_porosity_function(
-            porosity_value=porosity_field,
-            low_cut=low_cut,
-            high_cut=high_cut,
-            value_at_low_cut=value_at_low_cut,
-            value_at_high_cut=value_at_high_cut,
-        )
+def rough_porosity(
+    porosity_field, low_cut, high_cut, value_at_low_cut=None, value_at_high_cut=None
+):
+    if value_at_low_cut is None:
+        value_at_low_cut = low_cut
+    if value_at_high_cut is None:
+        value_at_high_cut = high_cut
+
+    rough_porosity_field = _rough_porosity_transformation(
+        porosity_field.dat.data_ro[:], low_cut, high_cut, value_at_low_cut, value_at_high_cut
     )
+    new_porosity = fire.Function(porosity_field.function_space(), val=rough_porosity_field)
     return new_porosity
 
 
-def _rough_porosity_function(
+def _rough_porosity_transformation(
     porosity_value, low_cut, high_cut, value_at_low_cut, value_at_high_cut
 ):
-    if porosity_value < low_cut:
-        return value_at_low_cut
-    elif porosity_value < high_cut:
-        mid_range_porosity = (porosity_value - low_cut) / (high_cut - low_cut)
-        return mid_range_porosity
-    elif high_cut <= porosity_value <= 1:
-        return value_at_high_cut
-    else:
-        return 1
+    new_porosity = np.where(
+        porosity_value < low_cut,
+        value_at_low_cut,
+        np.where(
+            porosity_value < high_cut,
+            porosity_value,
+            np.where(porosity_value < 1, value_at_high_cut, value_at_low_cut),
+        ),
+    )
+    return new_porosity
