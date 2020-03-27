@@ -73,6 +73,14 @@ class ChemicalTransportResult(object):
         self.kinetics = ChemicalTransportResult.KineticsResult()
 
 
+
+        self.smart_equilibrium_num_accepted_estimates = 0
+
+        self.smart_equilibrium_num_accepted_estimates_current_time_step = 0
+
+        self.smart_equilibrium_num_solves = 0
+
+
 class ChemicalTransportSolver(object):
 
     def __init__(self, field, method='supg'):
@@ -189,6 +197,7 @@ class ChemicalTransportSolver(object):
 
         # Initialize the chemical equilibrium solver
         self.equilibrium = rkt.EquilibriumSolver(self.system)
+        self.equilibrium = rkt.SmartEquilibriumSolver(self.system)
         self.equilibrium.setPartition(self.partition)
 
         # Initialize the indices of the equilibrium and kinetic species
@@ -299,6 +308,7 @@ class ChemicalTransportSolver(object):
 
         # Define auxiliary bindings
         states = field.states()
+        properties = field.properties()
         iterations = self.result.equilibrium._iterations
         seconds = self.result.equilibrium._seconds
 
@@ -318,6 +328,8 @@ class ChemicalTransportSolver(object):
 
         # self.equilibrium.setOptions(options)
 
+        self.result.smart_equilibrium_num_accepted_estimates_current_time_step = 0
+
         # Compute the equilibrium states
         for k in range(self.num_dofs):
 
@@ -325,19 +337,38 @@ class ChemicalTransportSolver(object):
             T = states[k].temperature()
             P = states[k].pressure()
 
+            # print(f'@DOF[{k}]...', flush=True)
+            # print(f'@DOF[{k}]...computing equilibrium', flush=True)
+
             # Perform the equilibrium calculation at current degree of freedom
             result = self.equilibrium.solve(states[k], T, P, self.be[:, k])
 
             # Check if the equilibrium calculation was successful
-            if not result.optimum.succeeded:
+            # if not result.optimum.succeeded:
+            if not result.estimate.accepted and not result.learning.gibbs_energy_minimization.optimum.succeeded:
                 b = [(elem.name(), amount) for elem, amount in zip(self.system.elements(), self.be[:, k])]
                 raise RuntimeError("Failed to calculate equilibrium state at dof (%d), under " \
                 "temperature %f K, pressure %f Pa, and element molar amounts %s." % \
                 (k, states[k].temperature(), states[k].pressure(), str(b)))
 
+            # Update the chemical properties at the current dof
+            properties[k].assign(self.equilibrium.properties())
+
+            self.result.smart_equilibrium_num_solves += 1
+
+            if result.estimate.accepted:
+                # print(f'@DOF[{k}]...smart succeeded!', flush=True)
+                self.result.smart_equilibrium_num_accepted_estimates += 1
+                self.result.smart_equilibrium_num_accepted_estimates_current_time_step += 1
+
+            else:
+                print(f'@DOF[{k}]...smart failed!', flush=True)
+                np.set_printoptions(linewidth=10000)
+                print(f'b[{k}] = {self.be[:, k]}', flush=True)
+
             # Store the statistics of the equilibrium calculation
-            iterations[k] = result.optimum.iterations
-            seconds[k] = result.optimum.time
+            # iterations[k] = result.optimum.iterations
+            # seconds[k] = result.optimum.time
 
         # Update the element amounts in the fluid phases of the equilibrium-fluid partition
         for i in range(self.num_fluid_phases):
@@ -345,11 +376,20 @@ class ChemicalTransportSolver(object):
             self.bef[i] += bef_negative[i]
 
         # Extract the calculation statistics from the auxiliary ndarray members
-        self.result.equilibrium.iterations.vector()[:] = iterations
-        self.result.equilibrium.seconds.vector()[:] = seconds
+        # self.result.equilibrium.iterations.vector()[:] = iterations
+        # self.result.equilibrium.seconds.vector()[:] = seconds
 
         # Total time spent on performing equilibrium calculations
         self.result.seconds_equilibrium = timer.time() - tbegin
+
+        # print(f'smart_equilibrium_num_accepted_estimates_current_time_step = {self.result.smart_equilibrium_num_accepted_estimates_current_time_step}', flush=True)
+        # print(f'smart_equilibrium_num_denied_estimates_current_time_step = {self.num_dofs - self.result.smart_equilibrium_num_accepted_estimates_current_time_step}', flush=True)
+        # print(f'smart_equilibrium_num_accepted_estimates = {self.result.smart_equilibrium_num_accepted_estimates}', flush=True)
+        # print(f'smart_equilibrium_num_denied_estimates = {self.result.smart_equilibrium_num_solves - self.result.smart_equilibrium_num_accepted_estimates}', flush=True)
+        # print(f'smart_equilibrium_num_solves = {self.result.smart_equilibrium_num_solves}', flush=True)
+        # print(f'ratio_current_time_step = {self.result.smart_equilibrium_num_accepted_estimates_current_time_step/self.num_dofs * 100}%', flush=True)
+        # print(f'ratio = {self.result.smart_equilibrium_num_accepted_estimates/self.result.smart_equilibrium_num_solves * 100}%', flush=True)
+        # print(f'time (seconds) = {self.result.seconds_equilibrium}', flush=True)
 
 
     def react(self, field, dt):
