@@ -301,10 +301,10 @@ class DarcySolver:
         # Stabilizing parameters
         has_mesh_characteristic_length = True
         beta_0 = fire.Constant(1e-15)
-        delta_0 = fire.Constant(-1)
-        delta_1 = fire.Constant(1 / 2)
-        delta_2 = fire.Constant(0)
-        delta_3 = fire.Constant(0)
+        delta_0 = fire.Constant(1)
+        delta_1 = fire.Constant(-1 / 2)
+        delta_2 = fire.Constant(1 / 2)
+        delta_3 = fire.Constant(1 / 2)
 
         # h_avg = (h('+') + h('-')) / 2.
         beta = beta_0 / h
