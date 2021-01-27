@@ -42,6 +42,7 @@ class _TransportSolver(object):
 
         if self.method == 'supg':
             self.a, self.L = self._supg_form(V)
+            self.limiter = VertexBasedLimiter(V)  # Kuzmin slope limiter
         elif self.method == 'dg':
             self.a, self.L = self._primal_dg_advection(V)
             self.limiter = VertexBasedLimiter(V)  # Kuzmin slope limiter
@@ -136,8 +137,9 @@ class _TransportSolver(object):
         self.u0.assign(u)
         self.u.assign(u)
         self.solver.solve()
-        if self.method == 'dg':
-            self.limiter.apply(self.u)
+        # self.limiter.apply(self.u)
+        # if self.method == 'dg':
+        #     self.limiter.apply(self.u)
         u.assign(self.u)
 
 

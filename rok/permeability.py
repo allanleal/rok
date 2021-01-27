@@ -10,7 +10,7 @@ def rescale_field(x_input, x_new_min, x_new_max):
     return (x_input - x_min_input) / (x_max_input - x_min_input) * (x_new_max - x_new_min) + x_new_min
 
 
-def permeability(function_space, minval=1e-14, maxval=1e-10, var=1e-2, len_scale=10, len_low=0, seed=20170519):
+def permeability(function_space, minval=1e-18, maxval=1e-10, var=1e-2, len_scale=10, len_low=0, seed=20170519):
     mesh = function_space.mesh()
     dim = mesh.geometric_dimension()
 
